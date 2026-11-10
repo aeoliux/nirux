@@ -63,6 +63,8 @@ struct nirux_framebuffer_driver {
     ssize_t (*set16single)(uint8_t output, size_t seek, uint16_t entry);
 } __attribute__((__packed__));
 
+extern struct nirux_interface_driver video_interface;
+
 enum vga_color {
 	VGA_COLOR_BLACK = 0,
 	VGA_COLOR_BLUE = 1,

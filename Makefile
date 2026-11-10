@@ -3,6 +3,8 @@ MARCH := i486
 QEMU_CPU := 486
 OPTIMISE := 0
 
+KSTRING := 1.0.0-moonshine
+
 CROSS_COMPILE :=
 
 AS = ${CROSS_COMPILE}as
@@ -21,7 +23,7 @@ ASFLAGS += --32
 LDFLAGS += -m32
 endif
 
-KOBJ =
+KOBJ = .kinfo.o
 TRACK =
 
 include arch/Makefile
@@ -38,6 +40,12 @@ include include/Makefile
 
 all: nImage
 
+.kinfo.c:
+	-@echo "	MK	$@" && \
+		rm -f $@ && \
+		echo "const char * UNAME_M = \"$(ARCH)\";" >> $@ && \
+		echo "const char * UNAME_R = \"$(KSTRING)\";" >> $@
+
 nImage: nImage-$(ARCH)
 
 nImage-$(ARCH): $(TRACK) $(KOBJ)
@@ -47,5 +55,6 @@ test-$(ARCH): nImage-$(ARCH)
 	@qemu-system-$(ARCH) -kernel $^ -M isapc,accel=tcg -cpu $(QEMU_CPU) -m 8M
 
 clean:
+	-@echo "	CL	.*.c" && find . -name '.*.c' -delete
 	-@echo "	CL	*.o" && find . -name '*.o' -delete
 	-@echo "	CL	nImage-*" && find . -name 'nImage-*' -delete

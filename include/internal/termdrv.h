@@ -17,4 +17,4 @@ ssize_t terminal_write(uint8_t major, uint8_t minor, size_t seek, const void *bu
 int terminal_ioctl(uint8_t major, uint8_t minor, int op, void *arg);
 int terminal_modctl(uword_t op, void *arg);
 
-extern struct nirux_interface_driver video_interface;
+extern struct nirux_interface_driver terminal_interface;

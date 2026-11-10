@@ -1,7 +1,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <vtt.h>
+#include <termdrv.h>
 
 void vprintf(const char *fmt, uint8_t *arg) {
     uint8_t operand = 0;
@@ -95,9 +95,9 @@ char *i32toa(char *dst, uint32_t n, uint8_t base, uint8_t unsig) {
 }
 
 void putchar(uint8_t ch) {
-    virtual_terminal_driver.write(0, &ch, 1);
+    terminal_interface.write(4, 0, 0, &ch, 1);
 }
 
 void puts(const char *str) {
-    virtual_terminal_driver.write(0, str, strlen(str));
+    terminal_interface.write(4, 0, 0, str, strlen(str));
 }

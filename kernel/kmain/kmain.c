@@ -3,6 +3,7 @@
 #include <termdrv.h>
 #include <vtt.h>
 #include <kmem.h>
+#include <uname.h>
 
 void kmain() {
     //
@@ -14,8 +15,9 @@ void kmain() {
 
     // initialise virtual terminal
     if(vtt_initialise(4)) return;
-    puts("kmain.c: initialised virtual terminal driver\n");
-
-    printf("kmain.c: %d KB total available memory\n", (meminfo.total - meminfo.reserved) / 1024);
-    printf("kmain.c: %d KB used memory\n", meminfo.used / 1024);
+    puts("// Initialised virtual terminal driver\n");
+    
+    printf("// Nirux %s %s\n", UNAME_M, UNAME_R);
+    printf("// %d KB total available memory\n", (meminfo.total - meminfo.reserved) / 1024);
+    printf("// %d KB used memory\n", meminfo.used / 1024);
 }

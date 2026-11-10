@@ -6,4 +6,5 @@ TRACK += \
 KOBJ += \
 	arch/i386/boot.o \
 	arch/i386/init.o \
-	arch/i386/io.o
+	arch/i386/io.o \
+	arch/i386/panic.o
