@@ -1,0 +1,4 @@
+*.o
+*.os
+nImage-*
+/compile_flags.txt

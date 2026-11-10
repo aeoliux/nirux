@@ -1,0 +1,2 @@
+KOBJ += \
+	libc/string.o
