@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <driver.h>
 #include <fbdev.h>
+#include <stdint.h>
 #include <string.h>
 
 extern struct nirux_framebuffer_driver vga_framebuffer_driver;
@@ -38,11 +39,6 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
         return -ENXIO;
 
     switch (op) {
-        case IOFBDEVMODSET:
-            if ((fbnode->driver->flag & NFBDEV_FLAG_KMODESET) && fbnode->driver->modeset)
-                return fbnode->driver->modeset(fbnode->output, (uint32_t *) arg);
-            break;
-        
         case IOFBDEVMOVCUR:
             if (display->current_mode == NFBDEV_CURMODE_TEXTBF) {
                 uint16_t *cursor_pos = (uint16_t *) arg;
@@ -68,6 +64,11 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
             }
             break;
         
+        case IOFBDEVTXSCRL:
+            if (display->current_mode == NFBDEV_CURMODE_TEXTBF)
+                return fbnode->driver->scroll(fbnode->output, *((size_t *) arg));
+            break;
+        
         case IOFBDEVGETCUR:
             if (display->current_mode == NFBDEV_CURMODE_TEXTBF) {
                 uint16_t x = fbnode->driver->outputs[fbnode->output].cursor_x;
@@ -77,9 +78,23 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
                 return 0;
             }
             break;
+
         case IOFBDEVGETRES:
             *((uint32_t *) arg) = (((uint32_t) fbnode->driver->outputs[fbnode->output].height << 16) & 0xffff0000) | fbnode->driver->outputs[fbnode->output].width;
             return 0;
+
+        case IOFBDEVBFADDR:
+            if (display->current_mode == NFBDEV_CURMODE_TEXTBF) {
+
+                *((uint16_t **) arg) = (uint16_t *) fbnode->driver->outputs[fbnode->output].buffer;
+                return 0;
+            }
+            break;
+
+        case IOFBDEVMODSET:
+            if ((fbnode->driver->flag & NFBDEV_FLAG_KMODESET) && fbnode->driver->modeset)
+                return fbnode->driver->modeset(fbnode->output, (uint32_t *) arg);
+            break;
     }
 
     return -ENOSUP;

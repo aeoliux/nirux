@@ -1,2 +1,3 @@
 KOBJ += \
-	libc/string.o
+	libc/string.o \
+	libc/printf.o

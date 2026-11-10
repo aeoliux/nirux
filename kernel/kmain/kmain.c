@@ -1,5 +1,8 @@
 #include <fbdev.h>
+#include <stdio.h>
 #include <termdrv.h>
+#include <vtt.h>
+#include <kmem.h>
 
 void kmain() {
     //
@@ -11,24 +14,8 @@ void kmain() {
 
     // initialise virtual terminal
     if(vtt_initialise(4)) return;
+    puts("kmain.c: initialised virtual terminal driver\n");
 
-    // get cursor position
-    uint16_t cursor[2];
-    video_interface.ioctl(29, 0, IOFBDEVGETCUR, &cursor);
-
-    // get text buffer resolution
-    uint16_t scrsize[2];
-    video_interface.ioctl(29, 0, IOFBDEVGETRES, &scrsize);
-
-    // set some characters
-    struct iofbdevtxtset_arg arg = {
-        .seek = VGA_INDEX(cursor[0], cursor[1], scrsize[0]),
-        .count = 10,
-        .entry = VGA_ENTRY('/', VGA_ENTRY_COLOR(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK))
-    };
-    video_interface.ioctl(29, 0, IOFBDEVTXTSET, &arg);
-
-    // set cursor to free space
-    cursor[0] += 10;
-    video_interface.ioctl(29, 0, IOFBDEVMOVCUR, &cursor);
+    printf("kmain.c: %d KB total available memory\n", (meminfo.total - meminfo.reserved) / 1024);
+    printf("kmain.c: %d KB used memory\n", meminfo.used / 1024);
 }

@@ -17,9 +17,4 @@ ssize_t terminal_write(uint8_t major, uint8_t minor, size_t seek, const void *bu
 int terminal_ioctl(uint8_t major, uint8_t minor, int op, void *arg);
 int terminal_modctl(uword_t op, void *arg);
 
-ssize_t vtt_read(uint8_t minor, void *restrict buf, size_t n);
-ssize_t vtt_write(uint8_t minor, const void *buf, size_t n);
-int vtt_ioctl(uint8_t minor, int op, void *arg);
-int vtt_initialise(size_t spawn);
-
 extern struct nirux_interface_driver video_interface;

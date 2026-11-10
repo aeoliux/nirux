@@ -4,6 +4,7 @@
 #include <termdrv.h>
 #include <fbdev.h>
 #include <kmem.h>
+#include <vtt.h>
 
 struct nirux_terminal_driver virtual_terminal_driver = {
     .name = "vtt",
@@ -14,13 +15,9 @@ struct nirux_terminal_driver virtual_terminal_driver = {
     .ioctl = vtt_ioctl,
 };
 
-struct nirux_vtt {
-    uint16_t cur_x, cur_y;
-    uint16_t buffer[];
-} __attribute__((__packed__));
-
 uword_t vtt_current = 0;
 uint16_t vtt_width = 0, vtt_height = 0;
+uint16_t *direct_render = NULL;
 struct nirux_vtt **vtt_ptrs = NULL;
 
 int vtt_initialise(size_t spawn) {
@@ -44,6 +41,7 @@ int vtt_initialise(size_t spawn) {
     for (size_t n = 0; n < spawn; n++) {
         struct nirux_vtt *vtt = first_vtt + (n * vtt_terminfo_size);
 
+        vtt->direct_render = 0;
         vtt->cur_x = 0;
         vtt->cur_y = 0;
 
@@ -52,6 +50,7 @@ int vtt_initialise(size_t spawn) {
         vtt_ptrs[n] = vtt;
     }
 
+    first_vtt->direct_render = 1;
     first_vtt->cur_x = cur_pos[0];
     first_vtt->cur_y = cur_pos[1];
 
@@ -68,9 +67,14 @@ ssize_t vtt_read(uint8_t minor, void *restrict buf, size_t n) {
 }
 
 ssize_t vtt_write(uint8_t minor, const void *buf, size_t n) {
-    // TODO!
+    static uint8_t color = VGA_ENTRY_COLOR(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
 
-    return -ENOSUP;
+    if (minor >= virtual_terminal_driver.terms_count)
+        return -EFAULT;
+
+    struct nirux_vtt *vtt = vtt_ptrs[minor];
+
+    return vtt_buffer_append_str(vtt, color, (const uint8_t *) buf, n, minor == vtt_current);
 }
 
 int vtt_ioctl(uint8_t minor, int op, void *arg) {

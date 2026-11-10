@@ -22,13 +22,26 @@ int vga_cursor_move(uint8_t output, uint16_t x, uint16_t y) {
 ssize_t vga_set16(uint8_t output, size_t seek, uint16_t entry, size_t n) {
     memset16(&((uint16_t *) vga_framebuffer_driver.outputs[0].buffer)[seek], entry, n);
 
-    return n * 2;
+    return n;
 }
 
 ssize_t vga_set16_single(uint8_t output, size_t seek, uint16_t entry) {
     ((uint16_t *) vga_framebuffer_driver.outputs[0].buffer)[seek] = entry;
 
-    return 2;
+    return 1;
+}
+
+int vga_scroll(uint8_t output, size_t by) {
+    uint16_t *addr = (uint16_t *) vga_framebuffer_driver.outputs[0].buffer;
+    for (size_t i = 1; i < VGA_HEIGHT; i++) {
+        uint16_t *from = &addr[i * VGA_WIDTH], *to = &addr[(i - 1) * VGA_WIDTH];
+
+        memcpy(to, from, VGA_WIDTH * sizeof(uint16_t));
+    }
+
+    memset16(&addr[(VGA_HEIGHT - 1) * VGA_WIDTH], VGA_ENTRY_CHAR, VGA_WIDTH);
+
+    return 0;
 }
 
 void vga_console_init() {

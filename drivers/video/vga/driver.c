@@ -7,6 +7,7 @@ extern int vga_modeset(uint8_t output, uint32_t *restrict size);
 extern ssize_t vga_set16(uint8_t output, size_t seek, uint16_t entry, size_t n);
 extern ssize_t vga_set16_single(uint8_t output, size_t seek, uint16_t entry);
 extern ssize_t vga_console_write(uint8_t output, size_t seek, const void *buf, size_t n);
+extern int vga_scroll(uint8_t output, size_t by);
 
 ssize_t vga_write(uint8_t output, size_t seek, const void *buf, size_t n);
 ssize_t vga_set(uint8_t output, size_t seek, uint8_t byte, size_t n);
@@ -30,6 +31,7 @@ struct nirux_framebuffer_driver vga_framebuffer_driver = {
     },
 
     .cursor_move = vga_cursor_move,
+    .scroll = vga_scroll,
     
     .modeset = vga_modeset,
 

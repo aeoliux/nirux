@@ -2,12 +2,14 @@
 
 #include <driver.h>
 
-#define MODFBDEVNOTIF 0x01
-#define IOFBDEVMODSET 0x02
-#define IOFBDEVMOVCUR 0x04
-#define IOFBDEVTXTSET 0x08
-#define IOFBDEVGETCUR 0x10
-#define IOFBDEVGETRES 0x20
+#define MODFBDEVNOTIF 0x0001
+#define IOFBDEVMODSET 0x0002
+#define IOFBDEVMOVCUR 0x0004
+#define IOFBDEVTXTSET 0x0008
+#define IOFBDEVGETCUR 0x0010
+#define IOFBDEVGETRES 0x0020
+#define IOFBDEVBFADDR 0x0040
+#define IOFBDEVTXSCRL 0x0080
 
 struct iofbdevtxtset_arg {
     size_t seek;
@@ -43,6 +45,7 @@ struct nirux_framebuffer_driver {
 
     // only for text mode
     int (*cursor_move)(uint8_t output, uint16_t x, uint16_t y);
+    int (*scroll)(uint8_t output, size_t by);
 
     // can be NULL if not modesettable driver
     int (*modeset)(uint8_t output, uint32_t *restrict size);
