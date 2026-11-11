@@ -274,3 +274,8 @@ struct multiboot_apm_info
 #endif /* ! ASM_FILE */
 
 #endif /* ! MULTIBOOT_HEADER */
+
+// NIRUX
+#pragma once
+
+int initialise_mem_by_multiboot(multiboot_info_t *info);

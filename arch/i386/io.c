@@ -11,3 +11,7 @@ uint8_t inb(uint16_t port) {
 
     return value;
 }
+
+void iowait() {
+    inb(0x80);
+}

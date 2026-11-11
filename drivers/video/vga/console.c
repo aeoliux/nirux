@@ -1,5 +1,6 @@
 #include <fbdev.h>
 #include <ioport.h>
+#include <stdint.h>
 #include <string.h>
 
 extern struct nirux_framebuffer_driver vga_framebuffer_driver;
@@ -61,12 +62,17 @@ void vga_console_init() {
     if (vga_framebuffer_driver.outputs[0].cursor_y >= VGA_HEIGHT) {
         vga_framebuffer_driver.outputs[0].cursor_y = 0;
 
-        memset16(vga_framebuffer_driver.outputs[0].buffer, VGA_ENTRY_CHAR, VGA_WIDTH * VGA_HEIGHT);
-
         vga_cursor_move(0, 0, 0);
     } else {
         vga_cursor_move(0, 0, vga_framebuffer_driver.outputs[0].cursor_y);
     }
+
+    size_t clear_since = VGA_INDEX(0, vga_framebuffer_driver.outputs[0].cursor_y, VGA_WIDTH);
+    memset16(
+        &(vga_framebuffer_driver.outputs[0].buffer[clear_since * sizeof(uint16_t)]),
+        VGA_ENTRY_CHAR,
+        VGA_WIDTH * VGA_HEIGHT - clear_since
+    );
 
     vga_framebuffer_driver.outputs_count = 1;
     video_interface.modctl(MODFBDEVNOTIF, NULL);
