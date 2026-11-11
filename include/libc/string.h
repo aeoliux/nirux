@@ -9,3 +9,4 @@ void *memcpy(void *restrict dst, const void *src, size_t n);
 uint32_t strlen(const char * data);
 
 char *strrev(char *str);
+char *strcpy(char *restrict dst, const char *src);

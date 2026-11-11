@@ -38,3 +38,7 @@ uint32_t strlen(const char * data) {
     for (; data[len]; len++);
     return len;
 }
+
+char *strcpy(char *restrict dst, const char *src) {
+    return memcpy(dst, src, strlen(src));
+}

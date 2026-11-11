@@ -31,7 +31,8 @@ struct nirux_framebuffer_output {
     void *buffer;
 } __attribute__((__packed__));
 
-#define NFBDEV_MAX_OUTPUTS 1
+#define NFBDEV_MAX_OUTPUTS 4
+#define NFBDEV_MAX_FB_OUTPUTS 1
 #define NFBDEV_FLAG_TEXTONLY 0x0000
 #define NFBDEV_FLAG_KMODESET 0x0001
 #define NFBDEV_FLAG_DRMMDSET 0x0002
@@ -41,7 +42,7 @@ struct nirux_framebuffer_driver {
     uint16_t flag;                  // for VGA console: 0x0/0x1,  for Intel gpus: 0x1 | 0x2 = 0x3
 
     uint8_t outputs_count;          // for VGA console: 1,          for Intel gpus: min(max outputs, number of displays connected)
-    struct nirux_framebuffer_output outputs[NFBDEV_MAX_OUTPUTS];
+    struct nirux_framebuffer_output outputs[NFBDEV_MAX_FB_OUTPUTS];
 
     // only for text mode
     int (*cursor_move)(uint8_t output, uint16_t x, uint16_t y);

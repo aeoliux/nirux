@@ -37,6 +37,10 @@ struct nirux_interface_driver {
     uint8_t name[DRVNAMLEN + 1];
     // Restrict only one file descriptor to be able to access specific device node
     uint8_t restrict_fd_access;
+
+    // Initialise driver (optional)
+    int (*init)(void *arg);
+
     // Read from device node
     ssize_t (*read)(uint8_t major, uint8_t minor, size_t seek, void *restrict buf, size_t n);
     // Write to device node

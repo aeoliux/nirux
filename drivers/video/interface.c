@@ -1,8 +1,10 @@
+#include <modctl.h>
 #include <errno.h>
 #include <driver.h>
 #include <fbdev.h>
 #include <stdint.h>
 #include <string.h>
+#include <device.h>
 
 extern struct nirux_framebuffer_driver vga_framebuffer_driver;
 struct nirux_framebuffer_driver *framebuffer_drivers[] = { &vga_framebuffer_driver };
@@ -10,7 +12,7 @@ struct nirux_framebuffer_driver *framebuffer_drivers[] = { &vga_framebuffer_driv
 struct framebuffer_minor_node {
     struct nirux_framebuffer_driver *driver;
     uint8_t output;
-} __attribute__((__packed__)) framebuffer_devices[256] = {0};
+} __attribute__((__packed__)) framebuffer_devices[NFBDEV_MAX_OUTPUTS] = {0};
 uint8_t framebuffer_devices_counter = 0;
 
 ssize_t video_read(uint8_t major, uint8_t minor, size_t seek, void *restrict buf, size_t n) {
@@ -60,7 +62,9 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
                 size_t count = seek_and_count[1];
 
                 uint16_t entry = *((uint16_t *) (arg + (2 * sizeof(size_t))));
-                return count > 1 ? fbnode->driver->set16(fbnode->output, seek, entry, count) : fbnode->driver->set16single(fbnode->output, seek, entry);
+                return count > 1 
+                    ? fbnode->driver->set16(fbnode->output, seek, entry, count)
+                    : fbnode->driver->set16single(fbnode->output, seek, entry);
             }
             break;
         
@@ -80,7 +84,9 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
             break;
 
         case IOFBDEVGETRES:
-            *((uint32_t *) arg) = (((uint32_t) fbnode->driver->outputs[fbnode->output].height << 16) & 0xffff0000) | fbnode->driver->outputs[fbnode->output].width;
+            *((uint32_t *) arg) = 
+                (((uint32_t) fbnode->driver->outputs[fbnode->output].height << 16) & 0xffff0000) |
+                fbnode->driver->outputs[fbnode->output].width;
             return 0;
 
         case IOFBDEVBFADDR:
@@ -102,20 +108,26 @@ int video_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
 
 int video_modctl(uword_t op, void *arg) {
     switch (op) {
-        case MODFBDEVNOTIF:
+        case MODCTLRELOAD:
             for (int i = 0; i < framebuffer_devices_counter; i++)
-                if (!framebuffer_devices[i].driver->outputs[framebuffer_devices[i].output].current_mode)
+                if (!framebuffer_devices[i].driver->outputs[framebuffer_devices[i].output].current_mode) {
                     memset(&framebuffer_devices[i], 0, sizeof(struct framebuffer_minor_node));
 
+                    depopulate_device_node(NIRUX_FBDEV_NODE, i);
+                }
+
+            framebuffer_devices_counter = 0;
+            
             for (int i = 0; i < 1; i++) {
                 struct nirux_framebuffer_driver *fbdev = framebuffer_drivers[i];
 
-                for (uint8_t j = 0; j < fbdev->outputs_count; j++) {
+                for (uint8_t j = 0; j < fbdev->outputs_count && j < NFBDEV_MAX_OUTPUTS; j++) {
                     if (fbdev->outputs[j].current_mode) {
                         framebuffer_devices[framebuffer_devices_counter].driver = fbdev;
-                        framebuffer_devices[framebuffer_devices_counter++].output = j;
+                        framebuffer_devices[framebuffer_devices_counter].output = j;
 
                         // register node
+                        populate_device_node(NIRUX_FBDEV_NODE, framebuffer_devices_counter++);
                     }
                 }
             }
@@ -123,12 +135,18 @@ int video_modctl(uword_t op, void *arg) {
             return 0;
     }
 
+                    
     return -ENOSUP;
+}
+
+int video_init(void *arg) {
+    return claim_device_node(29, &video_interface);
 }
 
 struct nirux_interface_driver video_interface = {
     .name = "video",
     .restrict_fd_access = 0,
+    .init = video_init,
     .read = video_read,
     .write = video_write,
     .ioctl = video_ioctl,

@@ -1,3 +1,4 @@
+#include "modctl.h"
 #include <errno.h>
 #include <driver.h>
 #include <string.h>
@@ -56,6 +57,8 @@ int vtt_initialise(size_t spawn) {
 
     vtt_current = 0;
     virtual_terminal_driver.terms_count = spawn;
+
+    terminal_interface.modctl(MODCTLRELOAD, (void *) 4);
 
     return 0;
 }

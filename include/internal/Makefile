@@ -1,5 +1,5 @@
 TRACK += \
-	include/internal/devnode.h \
+	include/internal/device.h \
 	include/internal/driver.h \
 	include/internal/irq.h \
 	include/internal/timer.h \

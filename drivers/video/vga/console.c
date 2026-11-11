@@ -2,6 +2,7 @@
 #include <ioport.h>
 #include <stdint.h>
 #include <string.h>
+#include <modctl.h>
 
 extern struct nirux_framebuffer_driver vga_framebuffer_driver;
 extern struct nirux_interface_driver video_interface;
@@ -75,5 +76,5 @@ void vga_console_init() {
     );
 
     vga_framebuffer_driver.outputs_count = 1;
-    video_interface.modctl(MODFBDEVNOTIF, NULL);
+    video_interface.modctl(MODCTLRELOAD, NULL);
 }

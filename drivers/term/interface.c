@@ -1,11 +1,14 @@
+#include <modctl.h>
 #include <driver.h>
 #include <termdrv.h>
 #include <errno.h>
 #include <vtt.h>
+#include <device.h>
 
 struct nirux_interface_driver terminal_interface = {
     .name = "term",
     .restrict_fd_access = 0,
+    .init = terminal_init,
     .read = terminal_read,
     .write = terminal_write,
     .ioctl = terminal_ioctl,
@@ -49,7 +52,30 @@ int terminal_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
 }
 
 int terminal_modctl(uword_t op, void *arg) {
-    // TODO!
+    uint8_t major = 0;
+    ssize_t node_id = 0;
+
+    switch (op) {
+        case MODCTLRELOAD:
+            major = (uint8_t) ((uword_t) arg & 0xff);
+            if ((node_id = terminal_find_node(major)) == -1)
+                return -ENXIO;
+
+            struct nirux_terminal_driver *term = terminal_drivers[node_id];
+            for (ssize_t i = 0; i < term->terms_count; i++)
+                if (populate_device_node(major, i) == -1)
+                    return -1;
+            
+            return 0;
+    }
 
     return -ENOSUP;
+}
+
+int terminal_init(void *arg) {
+    for (size_t i = 0; i < sizeof(terminal_major_nodes) / sizeof(int); i++)
+        if (claim_device_node(terminal_major_nodes[i], &terminal_interface))
+            return -1;
+    
+    return 0;
 }
