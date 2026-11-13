@@ -76,7 +76,7 @@ enum nirux_block_floppy_commands {
 struct nirux_block_floppy_driver {
     ssize_t (*probe)(uint32_t *out, size_t limit);
 
-    ssize_t (*perform)(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n)
+    ssize_t (*perform)(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n);
 };
 
 extern struct nirux_block_floppy_driver x86floppy_driver;
