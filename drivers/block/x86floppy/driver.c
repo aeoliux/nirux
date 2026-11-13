@@ -1,7 +1,9 @@
+#include <errno.h>
 #include <irq.h>
 #include <block.h>
 #include <ioport.h>
 #include <stdio.h>
+#include <string.h>
 #include <x86floppy.h>
 
 static inline uint32_t x86floppy_convert_result(uint32_t result) {
@@ -67,6 +69,37 @@ ssize_t x86floppy_probe(uint32_t *out, size_t limit) {
     return n;
 }
 
+ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n) {
+    ssize_t done = 0;
+
+    switch (command) {
+        case BLOCK_FLOPPY_READ: command = 0; break;
+        case BLOCK_FLOPPY_WRITE: command = 1; break;
+        default: return -EINVAL;
+    }
+
+    x86floppy_set_motor(drive, 1);
+
+    while (done < n) {
+        if (command)
+            memcpy(x86floppy_dma, buf + (512 * done), 512);
+
+        struct chs_addr chs = block_floppy_lba_2_chs(drive, lba + done);
+        int result = x86floppy_perform_dma(command, chs.spt, chs.cyl, chs.head, chs.sec);
+        if (result) break;
+
+        if (!command && !result)
+            memcpy(buf + (512 * done), x86floppy_dma, 512);
+
+        done++;
+    }
+
+    x86floppy_set_motor(drive, 0);
+
+    return done;
+}
+
 struct nirux_block_floppy_driver x86floppy_driver = {
-    .probe = x86floppy_probe
+    .probe = x86floppy_probe,
+    .perform = x86floppy_perform
 };

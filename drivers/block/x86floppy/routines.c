@@ -119,7 +119,7 @@ int x86floppy_reset() {
 
 int x86floppy_select_drive(uint32_t drive) {
     uint32_t datarate = (drive & BLOCK_FLOPPY_3ED) ? 1000000 : 500000;
-    
+
     outb(X86FLOPPY_REG_CONFIGURATION_CONTROL_REGISTER, (drive & BLOCK_FLOPPY_3ED) ? 3 : 0);
 
     x86floppy_update_dor((x86floppy_dor & ~0x3) | (x86floppy_decode_drive_id(drive) & 0x3));
@@ -144,7 +144,7 @@ void x86floppy_set_motor(uint32_t drive_id, uint8_t state) {
         x86floppy_select_drive(drive_id);
 
     uint32_t drive = x86floppy_decode_drive_id(drive_id);
-    
+
     uint8_t mask = 1 << (drive + 4);
     x86floppy_update_dor(state ? (x86floppy_dor | mask) : (x86floppy_dor & ~mask));
 
@@ -162,7 +162,7 @@ void x86floppy_set_motor(uint32_t drive_id, uint8_t state) {
 int x86floppy_set_dma(uint8_t is_write) {
     // mask 2 channel
     outb(0xa, 0x4 | 0x2);
-    
+
     // reset flip-flop switch and save address offset
     outb(0xc, 0xff);
     outb(0x4, (uword_t) x86floppy_dma & 0xff);
@@ -228,7 +228,7 @@ int x86floppy_init(uint32_t *drives, size_t n) {
         // 0x90 - new generation
         case 0x90: if (x86floppy_configure()) return -0xfd; else break;
         // 0x80 - invalid command means legacy controller
-        case 0x80: break;
+        case 0x80: puts("// x86floppy - legacy PC/AT controller detected\n");
         default: printf("// x86floppy init failed - unknown controller version: %x\n", x86floppy_version); return -0xfe;
     }
 
@@ -259,7 +259,11 @@ int x86floppy_init(uint32_t *drives, size_t n) {
     return x86floppy_version;
 }
 
+uint8_t x86floppy_seeked_head = 0, x86floppy_seeked_cylinder = 0, x86floppy_seeked_drive = 0;
 int x86floppy_seek(uint8_t head, uint8_t cylinder) {
+    if (head == x86floppy_seeked_head && cylinder == x86floppy_seeked_cylinder && x86floppy_seeked_drive == x86floppy_current_drive)
+        return 0;
+
     x86floppy_irqed = 0;
     x86floppy_perform_command(
         X86FLOPPY_CMD_SEEK,
@@ -269,39 +273,45 @@ int x86floppy_seek(uint8_t head, uint8_t cylinder) {
     );
     if (x86floppy_await()) return -1;
 
-    return x86floppy_sense();
+    int ret = x86floppy_sense();
+    if (!ret) {
+        x86floppy_seeked_head = head;
+        x86floppy_seeked_cylinder = cylinder;
+        x86floppy_seeked_drive = x86floppy_current_drive;
+    }
+
+    return ret;
 }
 
-int x86floppy_read_dma(uint8_t cylinder, uint8_t head, uint8_t sec) {
-    if (x86floppy_seek(head, cylinder)) return -1;
+int x86floppy_perform_dma(uint8_t is_write, uint8_t spt, uint8_t cylinder, uint8_t head, uint8_t sec) {
+    if (x86floppy_seek(head, cylinder)) return -5;
 
-    puts("// x86floppy seeked\n");
-
-    x86floppy_set_dma(0);
+    x86floppy_set_dma(is_write);
 
     x86floppy_irqed = 0;
     x86floppy_nread = 0;
-    x86floppy_perform_command(
-        0x40 | X86FLOPPY_CMD_READ_DATA,
+    int result = x86floppy_perform_command(
+        0x40 | (is_write ? X86FLOPPY_CMD_WRITE_DATA : X86FLOPPY_CMD_READ_DATA),
         head << 2 | x86floppy_decode_drive_id(x86floppy_current_drive),
         cylinder,
         head,
         sec,
         2,
-        18, // ONLY FOR 1.44MB
+        spt,
         0x1b,
         0xff,
         X86FLOPPY_CMD_EOA
     );
+    if (result) return result;
 
     if (x86floppy_await()) return -2;
 
-    puts("// x86floppy read response bytes: ");
-    for (size_t i = 0; i < x86floppy_nread; i++)
-        printf("%x ", x86floppy_fifo[i]);
-    putchar('\n');
+//     puts("// x86floppy dma response bytes: ");
+//     for (size_t i = 0; i < x86floppy_nread; i++)
+//         printf("%x ", x86floppy_fifo[i]);
+//     putchar('\n');
 
-    int result = (x86floppy_nread > 0)
+    result = (x86floppy_nread > 0)
         ? -(x86floppy_fifo[0] & 0xc0)
         : -3;
 
@@ -315,7 +325,7 @@ int x86floppy_perform_command(uint8_t command, ...) {
 
     x86floppy_irqed = 0;
 
-    int timeout = 1000000;
+    int timeout = 10000;
     while (!x86floppy_can_command() && timeout > 0) {
         if (x86floppy_should_in_fifo()) inb(X86FLOPPY_REG_DATA_FIFO);
 
@@ -327,15 +337,27 @@ int x86floppy_perform_command(uint8_t command, ...) {
 
     outb(X86FLOPPY_REG_DATA_FIFO, command);
 
+    // printf("// x86floppy command %x args: ", (uint32_t) command);
     while (*arg != X86FLOPPY_CMD_EOA) {
-        while (!x86floppy_can_argument()) iowait();
+        timeout = 10000;
+        while (!x86floppy_should_in_fifo() && !x86floppy_can_argument() && timeout > 0) {
+            iowait();
+            timeout--;
+        }
+
         if (x86floppy_should_in_fifo()) {
+            printf("// x86floppy error code: %x\n", x86floppy_fifo[--x86floppy_nread]);
             return -2;
         }
 
+        if (timeout <= 0) return -2;
+
         outb(X86FLOPPY_REG_DATA_FIFO, (uint8_t) (*arg & 0xff));
+
+//        printf("%x ", (uint32_t) (uint8_t) (*arg & 0xff));
         arg += 2;
     }
+//    putchar('\n');
 
     for (size_t i = 0; i < 1000; i++) {
         if (x86floppy_can_argument()) break;

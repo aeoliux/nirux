@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <x86floppy.h>
 #include <irq.h>
 

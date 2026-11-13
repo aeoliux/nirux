@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <irq.h>
+#include <block.h>
 
 enum x86floppy_commands {
     X86FLOPPY_CMD_READ_TRACK =                 2,
@@ -25,7 +26,7 @@ enum x86floppy_commands {
     X86FLOPPY_CMD_VERIFY =                     22,
     X86FLOPPY_CMD_SCAN_LOW_OR_EQUAL =          25,
     X86FLOPPY_CMD_SCAN_HIGH_OR_EQUAL =         29,
-    
+
     X86FLOPPY_CMD_EOA =                        0x100,
 };
 
@@ -42,6 +43,7 @@ enum x86floppy_ioregs {
 };
 
 extern uint8_t x86floppy_irqed;
+extern uint8_t *x86floppy_dma;
 uword_t x86floppy_irq6(struct handler_args *args);
 
 uword_t x86floppy_flush_buffer();
@@ -50,4 +52,5 @@ int x86floppy_reset();
 void x86floppy_set_motor(uint32_t drive, uint8_t state);
 int x86floppy_select_drive(uint32_t drive);
 int x86floppy_perform_command(uint8_t command, ...);
-int x86floppy_read_dma(uint8_t cylinder, uint8_t head, uint8_t sec);
+int x86floppy_perform_dma(uint8_t is_write, uint8_t spt, uint8_t cylinder, uint8_t head, uint8_t sec);
+int x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n);

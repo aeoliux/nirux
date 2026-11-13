@@ -9,15 +9,6 @@
 
 extern struct nirux_interface_driver block_interface;
 
-struct nirux_block_driver {
-    char name[DRVNAMLEN + 1];
-
-    int (*probe)();
-
-    ssize_t (*write)(uint32_t drive, size_t seek, const void *buf, size_t n);
-    ssize_t (*read)(uint32_t drive, size_t seek, void *restrict buf, size_t n);
-} __attribute__((__packed__));
-
 enum nirux_block_device_type {
     // block device format as
     // bit 0->7           - device type
@@ -42,10 +33,20 @@ struct nirux_block_device {
     uint32_t type; // nirux_block_device_type value
     uint8_t removable;
 
+    uint16_t sector_size;
     uint64_t last_lba;
 
-    struct nirux_block_driver *driver;
+    void *driver;
     void *reserved;
+} __attribute__((__packed__));
+
+struct nirux_block_driver {
+    char name[DRVNAMLEN + 1];
+
+    int (*probe)();
+
+    ssize_t (*write)(struct nirux_block_device *drive, size_t seek, const void *buf, size_t n);
+    ssize_t (*read)(struct nirux_block_device *drive, size_t seek, void *restrict buf, size_t n);
 } __attribute__((__packed__));
 
 extern struct nirux_block_device block_devices[BLOCK_MAX_DEV];
@@ -59,12 +60,23 @@ enum nirux_block_floppy_drives_types {
     BLOCK_FLOPPY_3ED = 0x1000
 };
 
+struct chs_addr {
+    uint16_t cyl, head, sec, spt;
+} __attribute__((__packed__));
+
+struct chs_addr block_floppy_lba_2_chs(uint32_t drive, uint32_t lba);
+
 extern struct nirux_block_driver block_floppy_driver;
+
+enum nirux_block_floppy_commands {
+    BLOCK_FLOPPY_READ = 0x1,
+    BLOCK_FLOPPY_WRITE = 0x2,
+};
 
 struct nirux_block_floppy_driver {
     ssize_t (*probe)(uint32_t *out, size_t limit);
 
-
+    ssize_t (*perform)(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n)
 };
 
 extern struct nirux_block_floppy_driver x86floppy_driver;

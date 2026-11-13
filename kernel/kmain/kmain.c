@@ -35,23 +35,22 @@ void kmain() {
     if(vtt_initialise(4)) return;
     puts("// Initialised virtual terminal driver\n");
 
-    block_floppy_driver.probe();
-    uint32_t floppy_drive = block_devices[0].type;
+    if (!block_floppy_driver.probe()) {
+        printf("// x86floppy reading\n");
+        uint8_t sector[512];
+        ssize_t result = block_interface.read(8, 0, 0, sector, 2048);
+        printf("// x86floppy read result: %d\n", result);
+        if (result >= 1) {
+            puts("FAT12 label: ");
+            terminal_interface.write(4, 0, 0, sector + 0x2B, 11);
+            putchar('\n');
 
-    size_t target = timer_elapsed + 2000;
-    while (timer_elapsed < target) suspend();
-
-    printf("// x86floppy reading\n");
-    x86floppy_set_motor(floppy_drive, 1);
-    int result = x86floppy_read_dma(0, 0, 1);
-    printf("// x86floppy read result: %d\n", result);
-    if (!result) {
-        puts("FAT12 label: ");
-        terminal_interface.write(4, 0, 0, x86floppy_dma + 0x2B, 11);
-        putchar('\n');
+            puts("FAT12 oem:   ");
+            terminal_interface.write(4, 0, 0, sector + 0x3, 8);
+            putchar('\n');
+        }
     }
-    x86floppy_set_motor(floppy_drive, 0);
-    
+
     printf("// Nirux %s %s\n", UNAME_M, UNAME_R);
     printf("// %d KB total available memory\n", (meminfo.total - meminfo.reserved) / 1024);
     printf("// %d KB used memory\n", meminfo.used / 1024);
