@@ -35,8 +35,8 @@ _start:
 	call _i386_init
 	add $0x8, %esp
 
-	push $no_task_panic
-	call panic
+	// push $no_task_panic
+	// call panic
 	nop
 	_i386_as_halt: 	hlt
 					jmp _i386_as_halt

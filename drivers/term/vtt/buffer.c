@@ -90,6 +90,19 @@ ssize_t vtt_buffer_append_str(struct nirux_vtt *vtt, uint8_t color, const uint8_
     size_t offscroll = scrollable ? (seek + n - (vtt_width * vtt_height)) : 0;
     n -= offscroll;
 
+    if (vtt->cur_y == VGA_HEIGHT - 1) {
+        for (size_t i = 0; i < n; i++) {
+            if (src[i] == '\n') {
+                scrollable = 1;
+                size_t bak = n;
+                n -= i;
+                if (offscroll) offscroll += i;
+                else offscroll = bak - n;
+                break;
+            }
+        }
+    }
+
     size_t cursor_by = 0;
     ssize_t ret = vtt_buffer_set_str(vtt, seek, color, src, n, direct, &cursor_by);
     if (ret >= 1) vtt_buffer_move_cursor_by(vtt, cursor_by, direct);

@@ -19,7 +19,7 @@ struct nirux_terminal_driver *terminal_drivers[] = { &virtual_terminal_driver };
 int terminal_major_nodes[] = { 4 };
 
 static inline ssize_t terminal_find_node(uint8_t major) {
-    for (ssize_t i = 0; i < sizeof(terminal_major_nodes) / sizeof(int); i++) {
+    for (size_t i = 0; i < sizeof(terminal_major_nodes) / sizeof(int); i++) {
         if (major == terminal_major_nodes[i])
             return i;
     }
@@ -62,7 +62,7 @@ int terminal_modctl(uword_t op, void *arg) {
                 return -ENXIO;
 
             struct nirux_terminal_driver *term = terminal_drivers[node_id];
-            for (ssize_t i = 0; i < term->terms_count; i++)
+            for (size_t i = 0; i < term->terms_count; i++)
                 if (populate_device_node(major, i) == -1)
                     return -1;
             

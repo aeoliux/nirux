@@ -52,7 +52,7 @@ nImage-$(ARCH): $(TRACK) $(KOBJ)
 	@echo "	LD	$@" && $(CC) $(LDFLAGS) -o $@ $(KOBJ)
 
 test-$(ARCH): nImage-$(ARCH)
-	@qemu-system-$(ARCH) -kernel $^ -M isapc,accel=tcg -cpu $(QEMU_CPU) -m 8M
+	@qemu-system-$(ARCH) -kernel $^ -M isapc,accel=tcg -cpu $(QEMU_CPU) -m 8M $(QEMU_OPTS)
 
 clean:
 	-@echo "	CL	.*.c" && find . -name '.*.c' -delete
