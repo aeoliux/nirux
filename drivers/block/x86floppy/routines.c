@@ -228,7 +228,7 @@ int x86floppy_init(uint32_t *drives, size_t n) {
         // 0x90 - new generation
         case 0x90: if (x86floppy_configure()) return -0xfd; else break;
         // 0x80 - invalid command means legacy controller
-        case 0x80: puts("// x86floppy - legacy PC/AT controller detected\n");
+        case 0x80: puts("// x86floppy - legacy PC/AT controller detected\n"); break;
         default: printf("// x86floppy init failed - unknown controller version: %x\n", x86floppy_version); return -0xfe;
     }
 
