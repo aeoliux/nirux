@@ -1,9 +1,11 @@
 #include <modctl.h>
 #include <driver.h>
+#include <string.h>
 #include <termdrv.h>
 #include <errno.h>
 #include <vtt.h>
 #include <device.h>
+#include <stdio.h>
 
 struct nirux_interface_driver terminal_interface = {
     .name = "term",
@@ -67,6 +69,24 @@ int terminal_modctl(uword_t op, void *arg) {
                     return -1;
             
             return 0;
+        default:
+            if (op & 0xf0000000) {
+                uint8_t major = op & 0xff;
+                uint8_t minor = (op >> 8) & 0xff;
+
+                int index = terminal_find_node(major);
+                if (index == -1 || terminal_drivers[index]->terms_count <= minor)
+                    return -ENXIO;
+
+                memcpy(arg, terminal_drivers[index]->name, DRVNAMLEN + 1);
+                size_t length = strlen(arg);
+                if (length < DRVNAMLEN - 3) {
+                    i32toa(arg + strlen(arg), (uint32_t) minor, 10, 1);
+                }
+                ((char *) arg)[DRVNAMLEN + 1] = 0x0;
+                
+                return 0;
+            }
     }
 
     return -ENOSUP;

@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <device.h>
+#include <stdio.h>
 
 extern struct nirux_framebuffer_driver vga_framebuffer_driver;
 struct nirux_framebuffer_driver *framebuffer_drivers[] = { &vga_framebuffer_driver };
@@ -133,6 +134,24 @@ int video_modctl(uword_t op, void *arg) {
             }
 
             return 0;
+
+        default:
+            if (op & 0xf0000000) {
+                uint8_t major = op & 0xff;
+                uint8_t minor = (op >> 8) & 0xff;
+
+                struct framebuffer_minor_node *fbnode = &framebuffer_devices[minor];
+                if (framebuffer_devices_counter <= minor || !fbnode->driver || !fbnode->driver->outputs_count)
+                    return -ENXIO;
+
+                memcpy(arg, fbnode->driver->name, DRVNAMLEN + 1);
+                size_t length = strlen(arg);
+                if (length < DRVNAMLEN - 2) {
+                    i32toa(arg + strlen(arg), (uint32_t) minor, 10, 1);
+                }
+
+                return 0;
+            }
     }
 
                     

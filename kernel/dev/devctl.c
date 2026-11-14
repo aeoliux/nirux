@@ -13,6 +13,10 @@ int dinfo(uint16_t *seek, struct nirux_device_info *dev) {
 
         struct nirux_device_node *node = get_device_node(major);
         if (node && is_device_node_set(major, minor)) {
+            memset(dev, 0, sizeof(*dev));
+
+            if (node->iface->modctl) node->iface->modctl(0xf0000000 | (minor << 8) | major, dev->name);
+
             dev->major = major;
             dev->minor = minor;
 

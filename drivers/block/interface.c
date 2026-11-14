@@ -24,6 +24,19 @@ int block_modctl(uword_t op, void *arg) {
             }
 
             return -ENOMEM;
+        default:
+            if (op & 0xf0000000) {
+                uint8_t major = op & 0xff;
+                uint8_t minor = (op >> 8) & 0xff;
+
+                memcpy(arg, ((struct nirux_block_driver *) block_devices[minor].driver)->name, DRVNAMLEN + 1);
+                size_t length = strlen(arg);
+                if (length < DRVNAMLEN - 2) {
+                    i32toa(arg + strlen(arg), (uint32_t) minor, 10, 1);
+                }
+                
+                return 0;
+            }
     }
 
     return -EINVAL;
@@ -48,23 +61,45 @@ ssize_t block_read(uint8_t major, uint8_t minor, size_t seek, void *restrict buf
     size_t left_remaining_bytes = (middle_sectors_start * blk->sector_size) - seek;
     size_t rght_remaining_bytes = (seek + n) - (middle_sectors_limit * blk->sector_size);
 
-    ssize_t nread = drv->read(blk, middle_sectors_start, buf + left_remaining_bytes, middle_sectors_count);
-
     ssize_t left_nread = 0;
     if (left_remaining_bytes) {
         left_nread = drv->read(blk, middle_sectors_start - 1, block_read_buffer, 1);
+        if (left_nread < 1)
+            return -EIO;
 
         memcpy(buf, block_read_buffer + (seek % blk->sector_size), left_remaining_bytes);
+    }
+
+    ssize_t nread = drv->read(blk, middle_sectors_start, buf + left_remaining_bytes, middle_sectors_count);
+    if (nread < middle_sectors_count) {
+        if (nread < 0)
+            return left_remaining_bytes ? left_remaining_bytes : nread;
+        else
+            return (nread * blk->sector_size) + left_remaining_bytes;
     }
 
     ssize_t rght_nread = 0;
     if (rght_remaining_bytes) {
         rght_nread = drv->read(blk, middle_sectors_limit, block_read_buffer, 1);
+        if (rght_nread < 1) {
+            if (nread > 0 || left_remaining_bytes)
+                return (nread * blk->sector_size) + left_remaining_bytes;
+            else
+                return -EIO;
+        }
 
         memcpy(buf + (middle_sectors_count * blk->sector_size), block_read_buffer, rght_remaining_bytes);
     }
 
     return nread * blk->sector_size + left_remaining_bytes + rght_remaining_bytes;
+}
+
+ssize_t block_write(uint8_t major, uint8_t minor, size_t seek, const void *buf, size_t n) {
+    return -ENOSUP;
+}
+
+int block_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
+    return -ENOSUP;
 }
 
 struct nirux_interface_driver block_interface = {
@@ -73,7 +108,7 @@ struct nirux_interface_driver block_interface = {
 
     .init = block_init,
     .read = block_read,
-    .write = NULL,
-    .ioctl = NULL,
+    .write = block_write,
+    .ioctl = block_ioctl,
     .modctl = block_modctl
 };

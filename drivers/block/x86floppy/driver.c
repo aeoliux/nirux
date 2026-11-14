@@ -43,6 +43,7 @@ ssize_t x86floppy_probe(uint32_t *out, size_t limit) {
 
         int version = x86floppy_init(out, n);
         if (version < 0) {
+            memset(out, BLOCK_FLOPPY_NULL, limit);
             printf("// x86floppy probe failed: controller reset result = %d\n", version);
             return 0;
         }

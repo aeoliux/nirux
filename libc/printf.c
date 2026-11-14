@@ -1,3 +1,4 @@
+#include "device.h"
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -95,9 +96,9 @@ char *i32toa(char *dst, uint32_t n, uint8_t base, uint8_t unsig) {
 }
 
 void putchar(uint8_t ch) {
-    terminal_interface.write(4, 0, 0, &ch, 1);
+    dwrite(0, 0, &ch, 1);
 }
 
 void puts(const char *str) {
-    terminal_interface.write(4, 0, 0, str, strlen(str));
+    dwrite(0, 0, str, strlen(str));
 }
