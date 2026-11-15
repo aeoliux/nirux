@@ -57,18 +57,20 @@ void kmain() {
     if (floppy_ready) {
         struct fs_direntry entry;
         size_t seek = 0;
-            
-        int result = fs_fat.initialise(0x800);
+
+        printf("Initialising FAT volume access on /dev/fdblk0\n");
+        int result = fs_fat.initialise(0x900);
+        printf("Result = %d\n", result);
         if (result >= 0) {
-            puts("A: ");
-            
-            while ((result = fs_fat.fetch_entry(0x800, NULL, &entry, &seek)) > 0) {
-                dwrite(0, NULL, entry.filename, 11);
-                putchar(' ');
+            printf("Listing root directory of /dev/fdblk0\n");
+
+            while ((result = fs_fat.fetch_entry(0x900, NULL, &entry, &seek)) > 0) {
+                printf("%s ---> %u\n", (uint32_t) entry.filename, entry.ref);
             }
 
-            putchar('\n');
+            printf("Result = %d\n", result);
         }
+
 
         // result = fs_fat.initialise(0x801);
         // if (result >= 0) {

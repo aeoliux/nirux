@@ -51,6 +51,9 @@ struct nirux_block_driver {
 
 extern struct nirux_block_device block_devices[BLOCK_MAX_DEV];
 
+ssize_t block_read_bytes(struct nirux_block_device *blk, struct nirux_block_driver *drv, size_t seek, void *restrict buf, size_t n);
+ssize_t block_read_block(struct nirux_block_device *blk, struct nirux_block_driver *drv, size_t seek, void *restrict buf, size_t n);
+
 enum nirux_block_floppy_drives_types {
     BLOCK_FLOPPY_NULL,
     BLOCK_FLOPPY_5DD = 0x0100,

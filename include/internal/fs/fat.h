@@ -15,7 +15,8 @@ enum fs_fat_type {
 struct fs_fat_superblock {
     uint8_t     jump[3];
 
-    uint8_t     oem[5]; // 8 in reality
+    uint8_t     oem[1]; // 8 in reality
+    uint32_t    current_buffered_sector;
     uint8_t     fat_type;
     uint16_t    device; // here we gonna store device number and FAT
                         // fs type and that fills oem up to 8 bytes
@@ -66,6 +67,17 @@ struct fs_fat_direntry {
     uint16_t modified_date;
     uint16_t cluster_low;
     uint32_t size;
+} __attribute__((__packed__));
+
+struct fs_fat_longfname {
+    uint8_t seq;
+    uint8_t first[10];
+    uint8_t attr;
+    uint8_t long_type;
+    uint8_t checksum;
+    uint8_t second[12];
+    uint16_t zero;
+    uint8_t final[4];
 } __attribute__((__packed__));
 
 extern struct fs_fat_superblock *fs_fat_superblocks;

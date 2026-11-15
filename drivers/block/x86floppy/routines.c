@@ -28,7 +28,7 @@ static inline int x86floppy_is_executing() {
 }
 
 static inline int x86floppy_await() {
-    int timeout = 1000000;
+    int timeout = 10000000;
 
     while (!x86floppy_irqed && timeout > 0) {
         iowait();
@@ -248,10 +248,11 @@ int x86floppy_init(uint32_t *drives, size_t n) {
     for (size_t i = 0; i < n; i++) {
         x86floppy_set_motor(drives[i], 1);
         int result = x86floppy_recalibrate();
+        if (result) result = x86floppy_recalibrate();
         x86floppy_set_motor(drives[i], 0);
 
         if (result) {
-            printf("// x86floppy drive %u recalibration failed! Disabling drive\n", i);
+            printf("// x86floppy drive %u recalibration failed - code %d! Disabling drive\n", i, result);
             drives[i] = BLOCK_FLOPPY_NULL;
         }
     }

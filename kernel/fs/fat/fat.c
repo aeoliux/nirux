@@ -3,13 +3,11 @@
 #include <device.h>
 #include <errno.h>
 
-ssize_t fs_fat_current_fat_sector = -1;
-
 int fs_fat_read_fat(
     struct fs_fat_superblock *block,
     size_t fat_sector
 ) {
-    if (fs_fat_current_fat_sector == fat_sector)
+    if (block->current_buffered_sector && block->current_buffered_sector == fat_sector)
         return 0;
 
     size_t seek = fat_sector * block->sector_size;
@@ -21,7 +19,7 @@ int fs_fat_read_fat(
     );
     if (result < 0) return result;
     
-    fs_fat_current_fat_sector = fat_sector;
+    block->current_buffered_sector = fat_sector;
 
     return 0;
 }
