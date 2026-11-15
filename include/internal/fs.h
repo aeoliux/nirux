@@ -3,10 +3,11 @@
 #include <driver.h>
 #include <stdint.h>
 
-#define MAXPATHSIZ 512
+#define MAXPATHSIZ 511
+#define MAXFNAMSIZ 127
 #define MAXFSMNTED 16
 
-enum filesystem_direntry_type {
+enum fs_direntry_type {
     // types
     FS_FILE     = 0x0,
     FS_DIR      = 0x1,
@@ -20,30 +21,30 @@ enum filesystem_direntry_type {
     FS_HIDDEN   = 0x0100,
 };
 
-struct filesystem_direntry {
+struct fs_direntry {
     uint16_t type;
     uint32_t perm;
     uint16_t uid, gid;
     uint64_t last_access, size, ref, parent_ref;
 
-    char filename[];
+    char filename[MAXFNAMSIZ + 1];
 } __attribute__((__packed__));
 
-struct filesystem_driver {
+struct fs_driver {
     char name[DRVNAMLEN + 1];
 
     int (*initialise)(uint16_t device);
 
     ssize_t (*fetch_entry)(
         uint16_t device,
-        struct filesystem_direntry *restrict entry,
-        size_t *seek,
-        const char *path
+        const struct fs_direntry *parent,
+        struct fs_direntry *restrict entry,
+        size_t *seek
     );
 
     ssize_t (*read)(
         uint16_t device,
-        const struct filesystem_direntry *entry,
+        const struct fs_direntry *entry,
         void *restrict buf,
         size_t seek,
         size_t n
@@ -51,7 +52,7 @@ struct filesystem_driver {
 
     ssize_t (*write)(
         uint16_t device,
-        const struct filesystem_direntry *entry,
+        const struct fs_direntry *entry,
         const void *buf,
         size_t seek,
         size_t n
@@ -59,7 +60,7 @@ struct filesystem_driver {
 
     int (*creat)(
         uint16_t device,
-        const struct filesystem_direntry *dir,
+        const struct fs_direntry *dir,
         const char *name,
         uint16_t type,
         const void *arg
@@ -67,28 +68,28 @@ struct filesystem_driver {
 
     int (*unlink)(
         uint16_t device,
-        const struct filesystem_direntry *entry
+        const struct fs_direntry *entry
     );
 
     int (*chmod)(
         uint16_t device,
-        const struct filesystem_direntry *entry,
+        const struct fs_direntry *entry,
         uint32_t mode
     );
 
     int (*chown)(
         uint16_t device,
-        const struct filesystem_direntry *entry,
+        const struct fs_direntry *entry,
         uint16_t uid, uint16_t gid
     );
 } __attribute__((__packed__));
 
-struct filesystem {
+struct fs {
     char mountpoint[MAXPATHSIZ + 1];
     uint16_t device;
     ssize_t depends_on;
 
-    struct filesystem_driver *driver;
+    struct fs_driver *driver;
 } __attribute__((__packed__));
 
 extern struct nirux_interface_driver fs_interface;

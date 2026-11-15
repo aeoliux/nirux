@@ -6,6 +6,7 @@
 #include <fs.h>
 
 extern struct nirux_interface_driver fs_interface;
+struct fs fs_mounts[MAXFSMNTED];
 
 ssize_t fs_read(uint8_t major, uint8_t minor, size_t seek, void *restrict buf, size_t n) {
     // implement read

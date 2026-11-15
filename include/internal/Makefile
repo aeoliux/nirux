@@ -12,6 +12,8 @@ TRACK += \
 	include/internal/inputdrv.h \
 	include/internal/termdrv.h \
 	include/internal/vtt.h \
-	include/internal/block.h
+	include/internal/block.h \
+	include/internal/fs.h \
+	include/internal/fs/fat.h
 
 include include/internal/$(ARCH)/Makefile

@@ -42,3 +42,24 @@ uint32_t strlen(const char * data) {
 char *strcpy(char *restrict dst, const char *src) {
     return memcpy(dst, src, strlen(src));
 }
+
+char *strncat(char *restrict dst, const char *src, size_t n) {
+    memcpy(dst + strlen(dst), src, n);
+
+    dst[strlen(dst)] = '\0';
+    return dst;
+}
+
+int strncmp(const char *s1, const char *s2, size_t n) {
+    size_t i = 0;
+
+    for (; i < n && s1[i] != 0 && s2[i] != 0; i++)
+        if (s1[i] - s2[i])
+            return s1[i] - s2[i];
+
+    return i >= n ? 0 : s1[i] - s2[i];
+}
+
+int strcmp(const char *s1, const char *s2) {
+    return strncmp(s1, s2, strlen(s1));
+}

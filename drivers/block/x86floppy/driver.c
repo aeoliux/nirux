@@ -38,6 +38,7 @@ ssize_t x86floppy_probe(uint32_t *out, size_t limit) {
     }
 
     if (n > 0) {
+        puts("// x86floppy initialising controller, please wait...\n");
         register_irq(0x20 + 0x6, x86floppy_irq6, 0);
         set_irq_state(0x20 + 0x6, 1);
 

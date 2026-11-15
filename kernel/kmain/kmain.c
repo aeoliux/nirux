@@ -1,3 +1,5 @@
+#include "fs.h"
+#include "stdint.h"
 #include <x86floppy.h>
 #include <irq.h>
 #include <fbdev.h>
@@ -10,6 +12,7 @@
 #include <device.h>
 #include <block.h>
 #include <ioport.h>
+#include <fs/fat.h>
 
 extern int x86floppy_perform_command(uint8_t command, ...);
 
@@ -52,30 +55,31 @@ void kmain() {
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 
     if (floppy_ready) {
-        printf("x86floppy reading 1st drive\n");
-        uint8_t sector[2048];
-        ssize_t result = block_interface.read(8, 0, 0, sector, 2048);
-        printf("x86floppy read result: %d\n", result);
-        if (result >= 1) {
-            puts("FAT12 label: ");
-            dwrite(0, 0, sector + 0x2B, 11);
-            putchar('\n');
+        struct fs_direntry entry;
+        size_t seek = 0;
+            
+        int result = fs_fat.initialise(0x800);
+        if (result >= 0) {
+            puts("A: ");
+            
+            while ((result = fs_fat.fetch_entry(0x800, NULL, &entry, &seek)) > 0) {
+                dwrite(0, NULL, entry.filename, 11);
+                putchar(' ');
+            }
 
-            puts("FAT12 oem:   ");
-            dwrite(0, 0, sector + 0x3, 8);
             putchar('\n');
         }
-        printf("x86floppy reading 2nd drive\n");
-        result = block_interface.read(8, 1, 0, sector, 2048);
-        printf("x86floppy read result: %d\n", result);
-        if (result >= 1) {
-            puts("FAT12 label: ");
-            dwrite(0, 0, sector + 0x2B, 11);
-            putchar('\n');
 
-            puts("FAT12 oem:   ");
-            dwrite(0, 0, sector + 0x3, 8);
-            putchar('\n');
-        }
+        // result = fs_fat.initialise(0x801);
+        // if (result >= 0) {
+        //     puts("B: ");
+            
+        //     while ((result = fs_fat.fetch_entry(0x801, NULL, &entry, &seek)) > 0) {
+        //         dwrite(0, NULL, entry.filename, 11);
+        //         putchar(' ');
+        //     }
+
+        //     putchar('\n');
+        // }
     }
 }
