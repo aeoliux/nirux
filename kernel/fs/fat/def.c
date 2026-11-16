@@ -31,7 +31,7 @@ ssize_t fs_get_index_for_device(uint16_t device) {
 
 int fs_fat_initialise(uint16_t device) {
     if (!fs_fat_superblocks) {
-        if ((fs_fat_superblocks = kalloc(3)) == NULL)
+        if ((fs_fat_superblocks = kalloc(4)) == NULL)
             return fs_fat_kfree_if_empty(-ENOMEM);
 
         fs_fat1x_extended_superblocks = (struct fs_fat1x_extended_superblock *) fs_fat_superblocks->extended_superblock;
@@ -75,5 +75,6 @@ struct fs_driver fs_fat = {
     .name = "fat",
 
     .initialise = fs_fat_initialise,
-    .fetch_entry = fs_fat_fetch_entry
+    .fetch_entry = fs_fat_fetch_entry,
+    .read = fs_fat_read
 };

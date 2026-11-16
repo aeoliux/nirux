@@ -38,7 +38,7 @@ struct fs_fat_superblock {
     uint32_t    sectors_count;
 
     uint8_t     extended_superblock[476];
-    uint8_t     buffer[1024];
+    uint8_t     buffer[1536];
 } __attribute__((__packed__));
 
 struct fs_fat1x_extended_superblock {
@@ -49,7 +49,7 @@ struct fs_fat1x_extended_superblock {
     uint8_t     volume_label[11];
     uint8_t     system_id[8];
 
-    uint8_t     _pad[486 + 1024];
+    uint8_t     _pad[486 + 1536];
 } __attribute__((__packed__));
 
 struct fs_fat_direntry {
@@ -86,7 +86,7 @@ extern size_t fs_fat_initialised;
 
 ssize_t fs_get_index_for_device(uint16_t device);
 
-uint32_t fs_fat_cluster(
+int64_t fs_fat_cluster(
     struct fs_fat_superblock *block,
     size_t current_cluster
 );
@@ -101,4 +101,12 @@ ssize_t fs_fat_fetch_entry(
     const struct fs_direntry *parent,
     struct fs_direntry *restrict entry,
     size_t *seek
+);
+
+ssize_t fs_fat_read(
+    uint16_t device,
+    const struct fs_direntry *dir,
+    void *restrict buf,
+    size_t seek,
+    size_t n
 );

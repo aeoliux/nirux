@@ -1,5 +1,6 @@
 #include "fs.h"
 #include "stdint.h"
+#include <string.h>
 #include <x86floppy.h>
 #include <irq.h>
 #include <fbdev.h>
@@ -55,6 +56,7 @@ void kmain() {
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 
     if (floppy_ready) {
+        uint8_t buffer[16384];
         struct fs_direntry entry;
         size_t seek = 0;
 
@@ -62,26 +64,20 @@ void kmain() {
         int result = fs_fat.initialise(0x900);
         printf("Result = %d\n", result);
         if (result >= 0) {
-            printf("Listing root directory of /dev/fdblk0\n");
+            printf("Reading syslinux.cfg:\n");
 
             while ((result = fs_fat.fetch_entry(0x900, NULL, &entry, &seek)) > 0) {
-                printf("%s ---> %u\n", (uint32_t) entry.filename, entry.ref);
+                if (!strcmp(entry.filename, "syslinux.cfg"))
+                    break;
+            }
+
+            if (result) {
+                result = fs_fat.read(0x900, &entry, buffer, 0, entry.size);
+                if (result > 0)
+                    printf("%s\n", buffer);
             }
 
             printf("Result = %d\n", result);
         }
-
-
-        // result = fs_fat.initialise(0x801);
-        // if (result >= 0) {
-        //     puts("B: ");
-            
-        //     while ((result = fs_fat.fetch_entry(0x801, NULL, &entry, &seek)) > 0) {
-        //         dwrite(0, NULL, entry.filename, 11);
-        //         putchar(' ');
-        //     }
-
-        //     putchar('\n');
-        // }
     }
 }
