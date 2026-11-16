@@ -13,13 +13,12 @@ enum fs_fat_type {
 };
 
 struct fs_fat_superblock {
-    uint8_t     jump[3];
-
-    uint8_t     oem[1]; // 8 in reality
-    uint32_t    current_buffered_sector;
+    uint32_t    current_data_buffered_sector;
+    uint32_t    current_fat_buffered_sector;
     uint8_t     fat_type;
     uint16_t    device; // here we gonna store device number and FAT
-                        // fs type and that fills oem up to 8 bytes
+                        // fs type and that fills oem and jump instructions
+                        // up to 11 bytes
 
     uint16_t    sector_size;
     uint8_t     sectors_per_cluster;
@@ -106,6 +105,12 @@ ssize_t fs_fat_fetch_entry(
 int64_t fs_fat_cluster(
     struct fs_fat_superblock *block,
     size_t current_cluster
+);
+
+int64_t fs_fat_seek_clusters(
+    struct fs_fat_superblock *blk,
+    size_t cluster,
+    size_t seek_to_byte
 );
 
 int64_t fs_fat_read_cluster(

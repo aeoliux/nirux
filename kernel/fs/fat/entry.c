@@ -34,18 +34,28 @@ static inline ssize_t read_sector_for_entry(struct fs_fat_superblock *blk, size_
         sector = dir_start + ((32 * entry) / blk->sector_size);
         offset = (32 * entry) % blk->sector_size;
     } else {
-        // to be done for other directories and FAT32
-        return -ENOSUP;
+        size_t absolute_offset = 32 * entry;
+        int64_t cluster = fs_fat_seek_clusters(blk, dir_start, absolute_offset);
+        if (cluster < 0)
+            return cluster;
+
+        if (cluster == 0)
+            return -1;
+        
+        size_t offset_in_clus = absolute_offset % (blk->sector_size * blk->sectors_per_cluster);
+        
+        offset = offset_in_clus % blk->sector_size;
+        sector = blk->reserved_sectors + (blk->sectors_per_fat * blk->fats_count) + (blk->root_dir_entries * 32 / blk->sector_size) + ((cluster - 2) * blk->sectors_per_cluster) + absolute_offset / blk->sector_size;
     }
 
-    if (!blk->current_buffered_sector || blk->current_buffered_sector != sector) {
-        size_t entry_absolute_offset = sector * blk->sector_size;
+    size_t entry_absolute_offset = sector * blk->sector_size;
     
-        int result = dread(blk->device, &entry_absolute_offset, &blk->buffer[512], blk->sector_size);
+    if (!blk->current_data_buffered_sector || blk->current_data_buffered_sector != sector) {
+        int result = dread(blk->device, &entry_absolute_offset, &blk->buffer[1024], blk->sector_size);
         if (result < blk->sector_size)
             return (result < 0) ? result : -EIO;
 
-        blk->current_buffered_sector = sector;
+        blk->current_data_buffered_sector = sector;
     }
 
     return offset / 32;
@@ -63,21 +73,21 @@ ssize_t fs_fat_fetch_entry(
 
     struct fs_fat_superblock *blk = &fs_fat_superblocks[ind];
 
-    size_t root_dir_start;
+    size_t dir_start;
     if (!parent && (blk->fat_type & FS_FAT16)) {
         if (*seek >= blk->root_dir_entries)
             return 0;
 
-        root_dir_start =
+        dir_start =
             (blk->sectors_per_fat * blk->fats_count + blk->reserved_sectors);
     } else if (!parent && (blk->fat_type & FS_FAT32)) {
         return -ENOSUP;
     } else {
-        return -ENOSUP;
+        dir_start = parent->ref;
     }
 
-    struct fs_fat_direntry *dir = (struct fs_fat_direntry *) &blk->buffer[512];
-    ssize_t offset = read_sector_for_entry(blk, root_dir_start, *seek, blk->fat_type & FS_FAT16);
+    struct fs_fat_direntry *dir = (struct fs_fat_direntry *) &blk->buffer[1024];
+    ssize_t offset = read_sector_for_entry(blk, dir_start, *seek, !parent && blk->fat_type & FS_FAT16);
     if (offset < 0)
         return offset;
 
@@ -99,6 +109,9 @@ ssize_t fs_fat_fetch_entry(
         struct fs_fat_longfname *lnam = (struct fs_fat_longfname *) dir;
         dir = &dir[1];
         (*seek)++;
+
+        if (long_fname > 5 || lnam->attr == 0x0)
+            return 0;
         
         if ((!long_fname && !(lnam->seq & 0x40)) || (lnam->seq & 0x80))
             continue;
@@ -111,7 +124,7 @@ ssize_t fs_fat_fetch_entry(
         long_fname++;
 
         if (((*seek * 32) % blk->sector_size) == 0 && *seek != 0) {
-            if ((offset = read_sector_for_entry(blk, root_dir_start, *seek, blk->fat_type & FS_FAT16)) < 0)
+            if ((offset = read_sector_for_entry(blk, dir_start, *seek, !parent && blk->fat_type & FS_FAT16)) < 0)
                 return offset;
 
             dir = &dir[offset];

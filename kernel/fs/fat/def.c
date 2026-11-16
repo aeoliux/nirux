@@ -65,7 +65,8 @@ int fs_fat_initialise(uint16_t device) {
         return fs_fat_kfree_if_empty(-ENOSUP);
     }
 
-    block->current_buffered_sector = 0;
+    block->current_fat_buffered_sector = 0;
+    block->current_data_buffered_sector = 0;
     block->sectors_count = block->sectors_count_16 ? block->sectors_count_16 : block->sectors_count;
 
     return fs_fat_initialised++;

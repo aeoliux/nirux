@@ -57,34 +57,46 @@ void kmain() {
 
     if (floppy_ready) {
         uint8_t buffer[16384];
-        struct fs_direntry entry;
+        struct fs_direntry dir, entry;
         size_t seek = 0;
 
         printf("Initialising FAT volume access on /dev/fdblk0\n");
         int result = fs_fat.initialise(0x900);
         printf("Result = %d\n", result);
         if (result >= 0) {
-            printf("Reading part of syslinux.cfg:\n");
+            printf("Locating /bin/nImage-i386 on /dev/fdblk0 (0x900):\n");
 
-            while ((result = fs_fat.fetch_entry(0x900, NULL, &entry, &seek)) > 0) {
-                if (!strcmp(entry.filename, "syslinux.cfg"))
+            while ((result = fs_fat.fetch_entry(0x900, NULL, &dir, &seek)) > 0) {
+                printf("/%s\n", dir.filename);
+                if (!strcmp(dir.filename, "bin"))
                     break;
             }
 
-            if (result) {
-                result = fs_fat.read(0x900, &entry, buffer, 0, entry.size);
+            printf("Entering /bin\n");
+
+            seek = 0;
+            while ((result = fs_fat.fetch_entry(0x900, &dir, &entry, &seek)) > 0) {
+                printf("/bin/%s\n", entry.filename);
+                if (strlen(entry.filename) && !strcmp(entry.filename, "nImage-i386"))
+                    break;
+            }
+
+            if (result > 0) {
+                printf("Found! Reading last 1000 bytes of /bin/nImage-i386...\n");
+                result = fs_fat.read(0x900, &entry, buffer, entry.size - 1000, entry.size);
                 if (result > 0) {
-                    size_t offset = 0;
-                    for (size_t i = 0; i < result; i++) {
-                        if (buffer[i] == '\n') {
-                            buffer[i] = 0;
-                            printf("%s\n", buffer + offset);
-                            offset = i + 1;
-                        }
-                    }
+                    dwrite(0, 0, buffer, result);
+                    // size_t offset = 0;
+                    // for (size_t i = 0; i < result; i++) {
+                    //     if (buffer[i] == '\n') {
+                    //         buffer[i] = 0;
+                    //         printf("%s\n", buffer + offset);
+                    //         offset = i + 1;
+                    //     }
+                    // }
                 }
 
-                printf("\nExpected result = %u\n", entry.size);
+                printf("\nExpected result = %u\n", 1000);
             }
 
             printf("Result = %d\n", result);
