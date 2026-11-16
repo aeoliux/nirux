@@ -103,6 +103,17 @@ ssize_t fs_fat_fetch_entry(
     size_t *seek
 );
 
+int64_t fs_fat_cluster(
+    struct fs_fat_superblock *block,
+    size_t current_cluster
+);
+
+int64_t fs_fat_read_cluster(
+    struct fs_fat_superblock *blk,
+    size_t cluster,
+    size_t seek_sectors
+);
+
 ssize_t fs_fat_read(
     uint16_t device,
     const struct fs_direntry *dir,

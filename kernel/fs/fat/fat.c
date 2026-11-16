@@ -71,8 +71,12 @@ int64_t fs_fat_cluster(
 
 int64_t fs_fat_read_cluster(
     struct fs_fat_superblock *blk,
-    size_t cluster
+    size_t cluster,
+    size_t sector_index
 ) {
+    if (sector_index >= blk->sectors_per_cluster)
+        return -EINVAL;
+
     int64_t next_i64 = fs_fat_cluster(blk, cluster);
     if (next_i64 <= 0) return next_i64;
     uint32_t next = next_i64;
@@ -85,14 +89,13 @@ int64_t fs_fat_read_cluster(
         return -EIO;
     }
 
-    uint8_t *cluster_buf = blk->buffer + 1024;
     size_t cluster_sector =
         blk->reserved_sectors + (blk->sectors_per_fat * blk->fats_count) + (blk->root_dir_entries * 32 / blk->sector_size) + ((cluster - 2) * blk->sectors_per_cluster);
-    size_t cluster_offset = cluster_sector * blk->sector_size;
+    size_t cluster_offset = (cluster_sector + sector_index) * blk->sector_size;
 
     // printf("%u: %u\n", next, cluster_sector);
     blk->current_buffered_sector = 0;
-    ssize_t result = dread(blk->device, &cluster_offset, &blk->buffer[512], blk->sector_size * blk->sectors_per_cluster);
+    ssize_t result = dread(blk->device, &cluster_offset, &blk->buffer[512], blk->sector_size);
     if (result < 0)
         return result;
 
@@ -115,7 +118,13 @@ ssize_t fs_fat_read(
     if (!dir->ref)
         return 0;
 
-    // IMPLEMENT FILE SIZE CHECK
+    size_t read_limit = seek + n;
+    if (read_limit > dir->size) {
+        if (seek > dir->size)
+            return -EINVAL;
+        
+        n = dir->size - seek;
+    }
 
     uint32_t cluster = dir->ref;
 
@@ -124,38 +133,59 @@ ssize_t fs_fat_read(
     else if     (blk->fat_type & FS_FAT16)      last_cluster_sign &= 0xffff;
 
     size_t seeked_sec = 0;
+    int64_t seeked_cluster = cluster;
     while (seek / blk->sector_size > seeked_sec) {
-        cluster = fs_fat_cluster(blk, cluster);
+        seeked_cluster = fs_fat_cluster(blk, seeked_cluster);
 
-        if (cluster < 0)
-            return cluster;
+        if (seeked_cluster < 0)
+            return seeked_cluster;
 
-        if (cluster == 0) {
+        if (seeked_cluster >= last_cluster_sign)
+            return 0;
+
+        if (seeked_cluster == 0) {
             printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", device);
             return -EIO;
         }
 
         seeked_sec += blk->sectors_per_cluster;
     }
+    cluster = seeked_cluster;
 
     seek %= blk->sector_size;
 
     size_t done = 0;
-    while (cluster < last_cluster_sign || seek) {
-        if (cluster < last_cluster_sign) cluster = fs_fat_read_cluster(blk, cluster);
+    int64_t next = 0;
+    while ((cluster < last_cluster_sign || seek) && n > 0) {
+        size_t sector_index = 0;
+        
+        while (sector_index < blk->sectors_per_cluster && n > 0) {
+            if (cluster < last_cluster_sign) next = fs_fat_read_cluster(blk, cluster, sector_index);
+            
+            if (next < 0)
+                return cluster;
 
-        if (cluster < 0)
-            return cluster;
+            if (next == 0) {
+                printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", device);
+                return -EIO;
+            }
 
-        if (cluster == 0) {
-            printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", device);
-            return -EIO;
+            if (n / blk->sector_size) {
+                memcpy(buf + done, &blk->buffer[512 + seek], blk->sector_size - seek);
+                done += blk->sector_size - seek;
+                n -= blk->sector_size - seek;
+            } else {
+                size_t off = n % blk->sector_size;
+                memcpy(buf + done, &blk->buffer[512], off);
+                done += off;
+                n = 0;
+            }
+
+            seek = 0;
+            sector_index++;
         }
 
-        size_t count = ((n / blk->sector_size) ? (blk->sector_size) : (n % blk->sector_size)) * blk->sectors_per_cluster;
-        memcpy(buf + done, &blk->buffer[512 + seek], count - seek);
-        done += count - seek;
-        seek = 0;
+        cluster = next;
     }
 
     return done;

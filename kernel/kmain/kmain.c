@@ -64,7 +64,7 @@ void kmain() {
         int result = fs_fat.initialise(0x900);
         printf("Result = %d\n", result);
         if (result >= 0) {
-            printf("Reading syslinux.cfg:\n");
+            printf("Reading part of syslinux.cfg:\n");
 
             while ((result = fs_fat.fetch_entry(0x900, NULL, &entry, &seek)) > 0) {
                 if (!strcmp(entry.filename, "syslinux.cfg"))
@@ -73,8 +73,18 @@ void kmain() {
 
             if (result) {
                 result = fs_fat.read(0x900, &entry, buffer, 0, entry.size);
-                if (result > 0)
-                    printf("%s\n", buffer);
+                if (result > 0) {
+                    size_t offset = 0;
+                    for (size_t i = 0; i < result; i++) {
+                        if (buffer[i] == '\n') {
+                            buffer[i] = 0;
+                            printf("%s\n", buffer + offset);
+                            offset = i + 1;
+                        }
+                    }
+                }
+
+                printf("\nExpected result = %u\n", entry.size);
             }
 
             printf("Result = %d\n", result);
