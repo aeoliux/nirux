@@ -35,8 +35,6 @@ Top-level interface - Network
 struct nirux_interface_driver {
     // Interface provider name
     uint8_t name[DRVNAMLEN + 1];
-    // Restrict only one file descriptor to be able to access specific device node
-    uint8_t restrict_fd_access;
 
     // Initialise driver (optional)
     int (*init)(void *arg);

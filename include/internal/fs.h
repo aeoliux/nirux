@@ -23,8 +23,7 @@ enum fs_direntry_type {
 
 struct fs_direntry {
     uint16_t type;
-    uint32_t perm;
-    uint16_t uid, gid;
+    uint16_t uid, gid, mode;
     uint64_t last_access, size, ref, parent_ref;
 
     char filename[MAXFNAMSIZ + 1];
@@ -92,4 +91,14 @@ struct fs {
     struct fs_driver *driver;
 } __attribute__((__packed__));
 
+extern struct fs fs_mounts[MAXFSMNTED + 1];
 extern struct nirux_interface_driver fs_interface;
+
+int fs_mount_root(uint16_t device, struct fs_driver *fsdrv);
+ssize_t fs_get_mountpoint(const char *path, size_t *offset);
+ssize_t fs_read_path(const char *path, size_t seek, void *restrict buf, size_t n);
+ssize_t fs_read_dir(const char *path, size_t *seek, struct fs_direntry *restrict out);
+ssize_t fs_resolve_file(const char *pth, struct fs **mnt, struct fs_direntry *restrict file);
+
+int fs_is_dir(const char *path);
+int fs_mount(uint16_t device, const char *path, struct fs_driver *fsdrv);

@@ -128,7 +128,8 @@ int video_modctl(uword_t op, void *arg) {
                         framebuffer_devices[framebuffer_devices_counter].output = j;
 
                         // register node
-                        populate_device_node(NIRUX_FBDEV_NODE, framebuffer_devices_counter++);
+                        populate_device_node(NIRUX_FBDEV_NODE, framebuffer_devices_counter);
+                        restrict_device_node(NIRUX_FBDEV_NODE, framebuffer_devices_counter++, 0, GID_VIDEO, 0660);
                     }
                 }
             }
@@ -164,7 +165,6 @@ int video_init(void *arg) {
 
 struct nirux_interface_driver video_interface = {
     .name = "video",
-    .restrict_fd_access = 0,
     .init = video_init,
     .read = video_read,
     .write = video_write,

@@ -40,7 +40,7 @@ static inline ssize_t read_sector_for_entry(struct fs_fat_superblock *blk, size_
             return cluster;
 
         if (cluster == 0)
-            return -1;
+            return -ENOENT;
         
         size_t offset_in_clus = absolute_offset % (blk->sector_size * blk->sectors_per_cluster);
         
@@ -93,11 +93,15 @@ ssize_t fs_fat_fetch_entry(
 
     dir = &dir[offset];
 
+    if (dir->attr == 0x0)
+        return 0;
+
     if (
         ((dir->attr & 0xf) != 0xf) && (
             (dir->attr & 0x8) || 
             (blk->fat_type & FS_FAT16 && dir->cluster_low == 0x0) ||
-            (dir->cluster_high == 0x0 && dir->cluster_low == 0x0)
+            (dir->cluster_high == 0x0 && dir->cluster_low == 0x0) ||
+            (parent && parent->ref == dir->cluster_low)
         )
     ) {
         (*seek)++;
@@ -136,7 +140,7 @@ ssize_t fs_fat_fetch_entry(
 
     entry->uid = 0;
     entry->gid = 0;
-    entry->perm = 0755;
+    entry->mode = 0755;
     entry->parent_ref = parent ? parent->ref : 0;
     entry->type = (dir->attr & 0x10) ? FS_DIR : FS_FILE;
     entry->last_access = 0;

@@ -17,7 +17,29 @@
 
 extern int x86floppy_perform_command(uint8_t command, ...);
 
-extern uint8_t *x86floppy_dma;
+static void list_dir_recursively(const char *path, size_t margin) {
+    struct fs_direntry entry;
+    size_t seek = 0;
+    ssize_t result;
+    char buf[MAXPATHSIZ + 1];
+
+    while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
+        for (size_t i = 0; i < margin; i++)
+            putchar('-');
+        printf("/%s - %u:%u, %o\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode);
+
+        if (entry.type & FS_DIR) {
+            memset(buf, 0, sizeof buf);
+            strcpy(buf, path);
+
+            strcat(buf, entry.filename);
+
+            list_dir_recursively(buf, strlen(buf));
+        }
+    }
+
+    if (!margin) printf("Done with result = %d\n", result);
+}
 
 void kmain() {
     //
@@ -55,51 +77,12 @@ void kmain() {
 
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 
-    if (floppy_ready) {
-        uint8_t buffer[16384];
-        struct fs_direntry dir, entry;
-        size_t seek = 0;
+    if (floppy_ready && fs_mount_root(0x900, &fs_fat) >= 0) {
+        printf("// Mounted /dev/fdblk0 as /\n");
+        if (fs_mount(0, "/dev", &fs_devfs) >= 0)
+            printf("// Mounted devfs on /dev\n");
 
-        printf("Initialising FAT volume access on /dev/fdblk0\n");
-        int result = fs_fat.initialise(0x900);
-        printf("Result = %d\n", result);
-        if (result >= 0) {
-            printf("Locating /bin/nImage-i386 on /dev/fdblk0 (0x900):\n");
-
-            while ((result = fs_fat.fetch_entry(0x900, NULL, &dir, &seek)) > 0) {
-                printf("/%s\n", dir.filename);
-                if (!strcmp(dir.filename, "bin"))
-                    break;
-            }
-
-            printf("Entering /bin\n");
-
-            seek = 0;
-            while ((result = fs_fat.fetch_entry(0x900, &dir, &entry, &seek)) > 0) {
-                printf("/bin/%s\n", entry.filename);
-                if (strlen(entry.filename) && !strcmp(entry.filename, "nImage-i386"))
-                    break;
-            }
-
-            if (result > 0) {
-                printf("Found! Reading last 1000 bytes of /bin/nImage-i386...\n");
-                result = fs_fat.read(0x900, &entry, buffer, entry.size - 1000, entry.size);
-                if (result > 0) {
-                    dwrite(0, 0, buffer, result);
-                    // size_t offset = 0;
-                    // for (size_t i = 0; i < result; i++) {
-                    //     if (buffer[i] == '\n') {
-                    //         buffer[i] = 0;
-                    //         printf("%s\n", buffer + offset);
-                    //         offset = i + 1;
-                    //     }
-                    // }
-                }
-
-                printf("\nExpected result = %u\n", 1000);
-            }
-
-            printf("Result = %d\n", result);
-        }
+        printf("Listing / recursively:\n");
+        list_dir_recursively("/", 0);
     }
 }

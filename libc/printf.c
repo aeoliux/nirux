@@ -44,6 +44,11 @@ void vprintf(const char *fmt, uint8_t *arg) {
                     puts(*((char **) arg));
                     arg += (uword_t) sizeof(char *);
                     break;
+                case 'o':
+                    i32toa(convbuf, *(uint32_t *) arg, 8, 1);
+                    arg += (uword_t) sizeof(uint32_t);
+                    puts(convbuf);
+                    break;
                 case '%':
                     putchar('%');
                     break;

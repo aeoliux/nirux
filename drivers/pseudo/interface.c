@@ -16,14 +16,15 @@ enum pseudo_node_type {
 struct pseudo_node {
     char name[DRVNAMLEN + 1];
     uint32_t mode;
+    uint16_t perm;
 };
 
 struct pseudo_node pseudo_nodes[] = {
-    {"output",  PSEUDO_NODE_REDIRECT | (4 * 256)},
-    {"mem",     PSEUDO_NODE_MEMORY},
-    {"null",    PSEUDO_NODE_DROP},
-    {"zero",    PSEUDO_NODE_CONSTANT},
-    {"random",  PSEUDO_NODE_RANDOM}
+    {"output",  PSEUDO_NODE_REDIRECT | (4 * 256),   0600},
+    {"mem",     PSEUDO_NODE_MEMORY,                 0600},
+    {"null",    PSEUDO_NODE_DROP,                   0666},
+    {"zero",    PSEUDO_NODE_CONSTANT,               0666},
+    {"random",  PSEUDO_NODE_RANDOM,                 0666}
 };
 
 ssize_t pseudo_read(uint8_t major, uint8_t minor, size_t seek, void *restrict buf, size_t n) {
@@ -107,8 +108,10 @@ int pseudo_modctl(uword_t op, void *arg) {
 int pseudo_init(void *arg) {
     int result = claim_device_node(0, &pseudo_interface);
     if (!result)
-        for (size_t i = 0; i < 5; i++)
+        for (size_t i = 0; i < 5; i++) {
             populate_device_node(0, i);
+            restrict_device_node(0, i, 0, 0, pseudo_nodes[i].perm);
+        }
 
     return result;
 }

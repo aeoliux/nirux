@@ -50,16 +50,28 @@ char *strncat(char *restrict dst, const char *src, size_t n) {
     return dst;
 }
 
+char *strcat(char *restrict dst, const char *src) {
+    return strncat(dst, src, strlen(src));
+}
+
 int strncmp(const char *s1, const char *s2, size_t n) {
     size_t i = 0;
 
-    for (; i < n && s1[i] != 0 && s2[i] != 0; i++)
+    for (; i < n && s1[i] && s2[i]; i++)
         if (s1[i] - s2[i])
             return s1[i] - s2[i];
 
     return i >= n ? 0 : s1[i] - s2[i];
 }
 
+int strnmis(const char *s1, const char *s2, size_t n) {
+    for (int i = 0; i < n; i++)
+        if (s1[i] - s2[i])
+            return i;
+    
+    return -1;
+}
+
 int strcmp(const char *s1, const char *s2) {
-    return strncmp(s1, s2, strlen(s1));
+    return strncmp(s1, s2, strlen(s1) + 1);
 }

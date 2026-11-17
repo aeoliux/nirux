@@ -24,7 +24,12 @@ int block_modctl(uword_t op, void *arg) {
                 int result = populate_device_node(9, addr % 256);
                 if (!result) return result;
 
-                return populate_device_node(8, addr % 256);
+                restrict_device_node(9, addr % 256, 0, GID_BLOCK, 0660);
+
+                result = populate_device_node(8, addr % 256);
+                if (!result) return result;
+
+                restrict_device_node(8, addr % 256, 0, GID_RAWDISK, 0660);
             }
 
             return -ENOMEM;
@@ -76,7 +81,6 @@ int block_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
 
 struct nirux_interface_driver block_interface = {
     .name = "block",
-    .restrict_fd_access = 0,
 
     .init = block_init,
     .read = block_read,

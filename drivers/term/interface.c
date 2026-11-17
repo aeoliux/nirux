@@ -9,7 +9,6 @@
 
 struct nirux_interface_driver terminal_interface = {
     .name = "term",
-    .restrict_fd_access = 0,
     .init = terminal_init,
     .read = terminal_read,
     .write = terminal_write,
@@ -64,9 +63,12 @@ int terminal_modctl(uword_t op, void *arg) {
                 return -ENXIO;
 
             struct nirux_terminal_driver *term = terminal_drivers[node_id];
-            for (size_t i = 0; i < term->terms_count; i++)
+            for (size_t i = 0; i < term->terms_count; i++) {
                 if (populate_device_node(major, i) == -1)
                     return -1;
+
+                restrict_device_node(major, i, 0, GID_TERM, 0660);
+            }
             
             return 0;
         default:

@@ -55,6 +55,26 @@ ssize_t dwrite(uint16_t addr, size_t *seek, const void *buf, size_t n) {
     return -ENXIO;
 }
 
+int dchmod(uint16_t addr, uint16_t mode) {
+    struct nirux_device_node *node = get_node(addr);
+    int64_t owner;
+    if (node && (owner = get_device_node_owner(addr / 256, addr % 256) >= 0)) {
+        return restrict_device_node(addr / 256, addr % 256, owner & 0xffff, (owner >> 16) & 0xffff, mode);
+    }
+
+    return -ENXIO;
+}
+
+int dchown(uint16_t addr, uint16_t uid, uint16_t gid) {
+    struct nirux_device_node *node = get_node(addr);
+    int32_t mode;
+    if (node && (mode = get_device_node_perm(addr / 256, addr % 256) >= 0)) {
+        return restrict_device_node(addr / 256, addr % 256, uid, gid, mode & 0xffff);
+    }
+
+    return -ENXIO;
+}
+
 int dioctl(uint16_t addr, int op, void *arg) {
     struct nirux_device_node *node = get_node(addr);
     return node ? node->iface->ioctl(addr / 256, addr % 256, op, arg) : -ENXIO;
