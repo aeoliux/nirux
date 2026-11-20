@@ -1,16 +1,80 @@
+#include <ioport.h>
+#include <kmem.h>
+#include <irq.h>
 #include <regs.h>
+#include <stdio.h>
 #include <task.h>
+#include <timer.h>
+#include <panic.h>
 
-struct regs *task_schedule(struct regs *r) {
-    current_task->sp = (uword_t) r;
+static inline struct task *find_next_alive() {
+    uword_t *ip = __builtin_return_address(0);
+
+    struct task *ptr = current_task->next ? current_task->next : &ktask;
+    struct task *startedWith = current_task;
+
+    for (; ptr != startedWith; ptr = ptr->next ? ptr->next : &ktask) {
+        switch (ptr->state) {
+            case TASK_RUNNING: return ptr;
+            case TASK_SLEEP:
+                if (ptr->substate < timer_elapsed) {
+                    ptr->substate = 0;
+                    ptr->state = TASK_RUNNING;
+                    return ptr;
+                }
+                break;
+            case TASK_EXITED:
+            case TASK_FAULT:
+            case TASK_KILLED:
+                task_release_mem(ptr);
+                break;
+        }
+    }
+
+    if (ptr->state != TASK_RUNNING) panic("no active tasks: %x", ip, (uint32_t) ptr->state);
+
+    return ptr;
+}
+
+void task_msleep(struct task *t, uword_t ms) {
+    t->state = TASK_SLEEP;
+    t->substate = timer_elapsed + ms;
+}
+
+void task_exit(struct task *t, uint16_t state, uint64_t substate) {
+    if (!t || t == &ktask)
+        return;
+
+    t->state = state;
+    t->substate = substate;
+
+    for (;;) suspend();
+}
+
+void task_release_mem(struct task *t) {
+    if (!t || t == &ktask)
+        return;
+
+    for (size_t i = 0; i < SECTION_COUNT; i++)
+        if (t->sections[i].ptr && t->sections[i].n)
+            kfreen((void *) t->sections[i].ptr, t->sections[i].n);
+
+    if (!t->is_kthread)
+        arch_free_pages(t->pagedir);
+
+    kfreen((void *) t->kstack, t->kstack_size / meminfo.pagesize);
+}
+
+void task_schedule(struct handler_args *args) {
+    current_task->sp = (uword_t) args->stack;
 
     struct task *prev = current_task;
-    current_task = current_task->next ? current_task->next : &ktask;
+    current_task = find_next_alive();
 
     arch_task_update_kstack(current_task->kstack + current_task->kstack_size);
 
     if (current_task->pagedir != prev->pagedir)
         arch_pagedir_set(current_task->pagedir);
 
-    return (struct regs *) current_task->sp;
+    args->stack = current_task->sp;
 }

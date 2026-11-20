@@ -23,8 +23,9 @@ struct regs *i386_interrupt_handler(struct regs *r) {
         panic("illegal interrupt '%x' ('%u')", &r->eip, r->int_no, r->int_no);
 
     ihandler_t *ihandler = &ihandlers[r->int_no];
+    struct handler_args args = {r->int_no, r->err_code, r->eip, r->eax, r->ebx, r->ecx, r->edx, r->esi, r->edi, r->ebp, (uword_t) r, current_task};
+    __asm__ volatile ("sti");
     if (ihandler->handler) {
-        struct handler_args args = {r->int_no, r->err_code, r->eip, r->eax, r->ebx, r->ecx, r->edx, r->esi, r->edi, r->ebp};
         uword_t result = ihandler->handler(&args);
         if (ihandler->does_return)
             r->eax = result;
@@ -34,21 +35,20 @@ struct regs *i386_interrupt_handler(struct regs *r) {
         i8259_eoi(r->int_no - 0x20);
     }
 
-    if (r->int_no == 32) {
-        struct regs *scheduled = task_schedule(r);
-        return scheduled ? scheduled : r;
-    }
-
-    return r;
+    return (struct regs *) args.stack;
 }
 
 uword_t i386_cpu_exception(struct handler_args *args) {
     printf("// Exception No. %x (err_code = %x)\n", args->int_no, args->err_code);
+
+    task_exit(args->caller, TASK_FAULT, (uint64_t) ((uint64_t) args->int_no << 32 | args->err_code));
     return 0;
 }
 
 uword_t double_fault(struct handler_args *args) {
     printf("// Caught double fault! (eip = 0x%x)\n", args->return_address);
+
+    task_exit(args->caller, TASK_FAULT, (uint64_t) ((uint64_t) args->int_no << 32 | args->err_code));
     return 0;
 }
 
@@ -104,6 +104,8 @@ extern void isr0x2C();
 extern void isr0x2D();
 extern void isr0x2E();
 extern void isr0x2F();
+
+extern void isr0x80();
 
 void (*const i386_isrs[])() = {
     isr0x0, isr0x1, isr0x2, isr0x3,
@@ -161,4 +163,6 @@ void initialise_basic_isrs() {
 
     for (size_t i = 0; i <= 0x30; i++)
         register_isr(i, (uword_t) i386_isrs[i], 0);
+
+    register_isr(0x80, (uword_t) isr0x80, 1);
 }

@@ -1,5 +1,5 @@
-#include "fs.h"
-#include "stdint.h"
+#include <fs.h>
+#include <unistd.h>
 #include <string.h>
 #include <x86floppy.h>
 #include <irq.h>
@@ -47,11 +47,13 @@ static void list_dir_recursively(const char *path, size_t margin) {
     if (!margin) printf("Done with result = %d\n", result);
 }
 
+static uint8_t task_finished = 0;
 static void simple_task() {
     printf("Listing / recursively:\n");
     list_dir_recursively("/", 0);
 
-    while (1) { printf("What are you waiting for?\n"); msleep(2000); }
+    task_finished = 1;
+    exit(0);
 }
 
 void kmain() {
@@ -97,9 +99,9 @@ void kmain() {
         if (fs_mount(0, "/dev", &fs_devfs) >= 0)
             printf("// Mounted devfs on /dev\n");
 
-        
         task_create(0xffffffff, (uword_t) simple_task, 0);
-        
-        while (1) { printf("PRINTING LOOP!!!\n"); msleep(250); }
+
+        while (!task_finished) { suspend(); }
+        printf("Task finished\n");
     }
 }

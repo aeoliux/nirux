@@ -10,10 +10,12 @@ uint32_t page_tables_count = 0;
 
 void arch_pagedir_set(uword_t pagedir) {
     __asm__ volatile (
+        "cli\n"
         "mov %0, %%cr3\n"
         "mov %%cr0, %%eax\n"
         "or $0x80000000, %%eax\n"
         "mov %%eax, %%cr0\n"
+        "sti"
         :
         : "r"(pagedir)
         : "eax", "memory"
@@ -55,6 +57,16 @@ void arch_setup_ktask() {
     ktask.pagedir = (uword_t) page_directory;
 }
 
+void arch_free_pages(uword_t pd) {
+    uint32_t *pagedir = (uint32_t *) pd;
+
+    for (size_t k = 512; k < 1024; k++)
+        if (pagedir[k] & 0x1)
+            kfree((void *)(pagedir[k] & ~0xfff));
+
+    kfree(pagedir);
+}
+
 uword_t arch_setup_pages(struct task_section *sections, size_t count) {
     uint32_t *pagedir = kalloc(1);
     if (!pagedir)
@@ -76,15 +88,10 @@ uword_t arch_setup_pages(struct task_section *sections, size_t count) {
             if (!(pagedir[dir_off] & 0x1)) {
                 uint32_t *new = kalloc(1);
                 if (!new) {
-                    for (size_t k = 512; k < 1024; k++) {
-                        if (pagedir[k] & 0x1)
-                            kfree((void *)(pagedir[k] & ~0xfff));
-                    }
-
-                    kfree(pagedir);
+                    arch_free_pages((uword_t) pagedir);
                     return 0;
                 }
-                
+
                 memset(new, 0, 4096);
                 pagedir[dir_off] = pagedir[dir_off] | 0x7;
             }

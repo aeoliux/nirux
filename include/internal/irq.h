@@ -6,6 +6,9 @@ struct handler_args {
     uword_t int_no, err_code;
     uword_t return_address;
     uword_t arg0, arg1, arg2, arg3, arg4, arg5, arg6;
+
+    uword_t stack;
+    void *caller;
 };
 
 typedef struct {

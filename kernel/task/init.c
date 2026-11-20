@@ -1,10 +1,12 @@
 #include <kmem.h>
-#include <stdio.h>
+//#include <stdio.h>
 #include <string.h>
 #include <task.h>
 #include <errno.h>
 
 struct task ktask = {
+    .state = TASK_RUNNING,
+    .substate = 0,
     .is_kthread = 1,
     .pagedir = 0,
     .kstack = 0,
@@ -31,7 +33,7 @@ int task_create(uword_t flags, uword_t entry, uword_t pagedir) {
     if (!is_kthread)
         if (!(user_sp = (uword_t) kalloc(STACKSIZ)))
             return -ENOMEM;
-    
+
     if (!(kstack = (uword_t) kalloc(STACKSIZ))) {
         if (user_sp) kfreen((void *) user_sp, STACKSIZ);
 
@@ -63,6 +65,8 @@ int task_create(uword_t flags, uword_t entry, uword_t pagedir) {
 
     last_task->next = t;
     last_task = t;
+
+    t->state = TASK_RUNNING;
 
     return 0;
 }

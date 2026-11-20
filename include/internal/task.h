@@ -3,6 +3,7 @@
 #include <fs.h>
 #include <fd.h>
 #include <regs.h>
+#include <irq.h>
 
 #define STACKSIZ 2
 
@@ -11,8 +12,20 @@ enum task_section_type {
     SECTION_RODATA,
     SECTION_DATA,
     SECTION_BSS,
+    SECTION_STACK,
 
     SECTION_COUNT
+};
+
+enum task_state {
+    TASK_RUNNING    = 0x0f00,
+    TASK_PAUSED     = TASK_RUNNING | 0x0001,
+    TASK_SLEEP      = TASK_RUNNING | 0x0002,    // substate = ms timestamp of wake-up
+
+    TASK_FINISHED   = 0xf000,
+    TASK_FAULT      = TASK_FINISHED | 0x0001,   // substate = exception number
+    TASK_EXITED     = TASK_FINISHED | 0x0002,   // substate = return code
+    TASK_KILLED     = TASK_FINISHED | 0x0004    // substate = signal code
 };
 
 struct task_section {
@@ -24,6 +37,9 @@ struct task_section {
 } __attribute__((__packed__));
 
 struct task {
+    uint16_t state;
+    uint64_t substate;
+
     uword_t is_kthread;
     uword_t pagedir;
     uword_t kstack;
@@ -36,7 +52,7 @@ struct task {
 
     struct task *next;
 
-    int fds[1004];
+    int fds[1002];
 } __attribute__((__packed__));
 
 extern struct task ktask;
@@ -45,7 +61,11 @@ extern struct task *last_task;
 
 int tasking_init();
 int task_create(uword_t flags, uword_t entry, uword_t pagedir);
-struct regs *task_schedule(struct regs *r);
+void task_schedule(struct handler_args *args);
+void task_msleep(struct task *t, uword_t ms);
+
+void task_release_mem(struct task *t);
+void task_exit(struct task *t, uint16_t state, uint64_t substate);
 
 // ARCH DEPENDENT
 
@@ -56,3 +76,4 @@ uword_t arch_setup_pages(struct task_section *sections, size_t count);
 void arch_task_init_stack(struct task *t, uword_t entry, uword_t user_sp);
 uword_t arch_regs_get_sp(struct regs *r);
 void arch_regs_set_sp(struct regs *r, uword_t sp);
+void arch_free_pages(uword_t pd);

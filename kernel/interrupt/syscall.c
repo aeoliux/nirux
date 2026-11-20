@@ -1,10 +1,10 @@
 #include <irq.h>
-#include <stdio.h>
+#include <task.h>
 
 uword_t syscall(struct handler_args *args) {
     switch (args->arg0) {
-        case 1:
-            puts((const char *) args->arg1);
+        case 0:
+            task_exit(args->caller, TASK_EXITED, (uint64_t) args->arg1);
             break;
     }
 

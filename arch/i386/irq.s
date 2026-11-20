@@ -78,6 +78,8 @@ ISR_NOERR 0x2F
 
 .global common_isr_handler
 common_isr_handler:
+    cli
+
     # save general registers
     pusha
 
@@ -109,3 +111,11 @@ common_isr_handler:
     popa
     add $8, %esp
     iret
+
+.global exit
+exit:
+    mov 4(%esp), %ebx
+    mov $0, %eax
+    int $0x80
+    sub $4, %esp
+    ret
