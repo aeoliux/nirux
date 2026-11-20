@@ -115,7 +115,7 @@ common_isr_handler:
 .global exit
 exit:
     mov 4(%esp), %ebx
-    mov $0, %eax
+    mov $1, %eax
     int $0x80
     sub $4, %esp
     ret

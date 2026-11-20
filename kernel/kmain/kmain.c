@@ -15,46 +15,46 @@
 #include <ioport.h>
 #include <fs/fat.h>
 #include <task.h>
+#include <ssb.h>
 
-extern int x86floppy_perform_command(uint8_t command, ...);
+// static inline void msleep(size_t ms) {
+//     size_t target = timer_elapsed + ms;
+//     while (timer_elapsed < target) suspend();
+// }
 
-static inline void msleep(size_t ms) {
-    size_t target = timer_elapsed + ms;
-    while (timer_elapsed < target) suspend();
-}
+// static void list_dir_recursively(const char *path, size_t margin) {
+//     struct fs_direntry entry;
+//     size_t seek = 0;
+//     ssize_t result;
+//     char buf[MAXPATHSIZ + 1];
 
-static void list_dir_recursively(const char *path, size_t margin) {
-    struct fs_direntry entry;
-    size_t seek = 0;
-    ssize_t result;
-    char buf[MAXPATHSIZ + 1];
+//     while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
+//         for (size_t i = 0; i < margin; i++)
+//             putchar('-');
+//         printf("/%s - %u:%u, %o, %u KB\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode, (uint32_t) entry.size / 1024);
 
-    while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
-        for (size_t i = 0; i < margin; i++)
-            putchar('-');
-        printf("/%s - %u:%u, %o, %u KB\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode, (uint32_t) entry.size / 1024);
+//         if (entry.type & FS_DIR) {
+//             memset(buf, 0, sizeof buf);
+//             strcpy(buf, path);
 
-        if (entry.type & FS_DIR) {
-            memset(buf, 0, sizeof buf);
-            strcpy(buf, path);
+//             strcat(buf, entry.filename);
 
-            strcat(buf, entry.filename);
+//             list_dir_recursively(buf, strlen(buf));
+//         }
+//     }
 
-            list_dir_recursively(buf, strlen(buf));
-        }
-    }
+//     if (!margin) printf("Done with result = %d\n", result);
+// }
 
-    if (!margin) printf("Done with result = %d\n", result);
-}
+// static uint8_t task_finished = 0;
+// static void simple_task() {
+//     // printf("Listing / recursively:\n");
+//     // list_dir_recursively("/", 0);
+    
 
-static uint8_t task_finished = 0;
-static void simple_task() {
-    printf("Listing / recursively:\n");
-    list_dir_recursively("/", 0);
-
-    task_finished = 1;
-    exit(0);
-}
+//     task_finished = 1;
+//     exit(0);
+// }
 
 void kmain() {
     //
@@ -99,9 +99,12 @@ void kmain() {
         if (fs_mount(0, "/dev", &fs_devfs) >= 0)
             printf("// Mounted devfs on /dev\n");
 
-        task_create(0xffffffff, (uword_t) simple_task, 0);
+        printf("Executing /bin/a.ssb..\n");
+        struct task *t = read_ssb(current_task, "/bin/a.ssb");
+        if (t) t->state = TASK_RUNNING;
 
-        while (!task_finished) { suspend(); }
-        printf("Task finished\n");
+        while (t->state & TASK_RUNNING) { suspend(); }
+
+        printf("Task finished!\n");
     }
 }

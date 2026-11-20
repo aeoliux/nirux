@@ -18,6 +18,8 @@ enum task_section_type {
 };
 
 enum task_state {
+    TASK_READY      = 0x0001,
+
     TASK_RUNNING    = 0x0f00,
     TASK_PAUSED     = TASK_RUNNING | 0x0001,
     TASK_SLEEP      = TASK_RUNNING | 0x0002,    // substate = ms timestamp of wake-up
@@ -29,7 +31,6 @@ enum task_state {
 };
 
 struct task_section {
-    uint8_t type;
     uint8_t rw;
     size_t n; // SIZE IN PAGES
 
@@ -42,25 +43,28 @@ struct task {
 
     uword_t is_kthread;
     uword_t pagedir;
+
+    uword_t ustack;
+    uword_t ustacksiz;
     uword_t kstack;
     uword_t sp;
-    size_t kstack_size;
+    uword_t occupied;
 
-    uint16_t uid, gid;
+    uint32_t user;
 
     struct task_section sections[SECTION_COUNT];
 
     struct task *next;
 
-    int fds[1002];
-} __attribute__((__packed__));
+    int fds[];
+} __attribute__((__aligned__(4096)));
 
 extern struct task ktask;
 extern struct task *current_task;
 extern struct task *last_task;
 
 int tasking_init();
-int task_create(uword_t flags, uword_t entry, uword_t pagedir);
+struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz);
 void task_schedule(struct handler_args *args);
 void task_msleep(struct task *t, uword_t ms);
 
@@ -73,7 +77,7 @@ void arch_setup_ktask();
 void arch_task_update_kstack(uword_t ksp);
 void arch_pagedir_set(uword_t pagedir);
 uword_t arch_setup_pages(struct task_section *sections, size_t count);
-void arch_task_init_stack(struct task *t, uword_t entry, uword_t user_sp);
+void arch_task_init_stack(struct task *t, uword_t entry);
 uword_t arch_regs_get_sp(struct regs *r);
 void arch_regs_set_sp(struct regs *r, uword_t sp);
 void arch_free_pages(uword_t pd);

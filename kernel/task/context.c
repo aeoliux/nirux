@@ -45,6 +45,9 @@ void task_exit(struct task *t, uint16_t state, uint64_t substate) {
     if (!t || t == &ktask)
         return;
 
+    if (state == TASK_FAULT)
+        printf("// FAULT: %x\n", (uword_t) substate);
+
     t->state = state;
     t->substate = substate;
 
@@ -59,10 +62,10 @@ void task_release_mem(struct task *t) {
         if (t->sections[i].ptr && t->sections[i].n)
             kfreen((void *) t->sections[i].ptr, t->sections[i].n);
 
-    if (!t->is_kthread)
+    if (!t->is_kthread && t->pagedir)
         arch_free_pages(t->pagedir);
 
-    kfreen((void *) t->kstack, t->kstack_size / meminfo.pagesize);
+    kfreen((void *) t->kstack, STACKSIZ);
 }
 
 void task_schedule(struct handler_args *args) {
@@ -71,7 +74,7 @@ void task_schedule(struct handler_args *args) {
     struct task *prev = current_task;
     current_task = find_next_alive();
 
-    arch_task_update_kstack(current_task->kstack + current_task->kstack_size);
+    arch_task_update_kstack(current_task->kstack + (STACKSIZ * meminfo.pagesize));
 
     if (current_task->pagedir != prev->pagedir)
         arch_pagedir_set(current_task->pagedir);

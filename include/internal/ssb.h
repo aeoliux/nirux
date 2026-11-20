@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#define SSB_MAGIC 0x5353420A // ascii: SSB\n
+#define SSB_MAGIC 0x0A425353 // ascii: SSB\n
 
 enum SSB_ARCH {
     SSB_64          = 0x01,
@@ -31,11 +31,11 @@ enum SSB_SECTION_TYPE {
     SSB_SECTION_WRITE   = 0x1,
     SSB_SECTION_LOAD    = 0x2,
 
-    SSB_SECTION_TEXT    = 0x10 | SSB_SECTION_LOAD,
-    SSB_SECTION_RODATA  = 0x11 | SSB_SECTION_LOAD,
-    SSB_SECTION_DATA    = 0x12 | SSB_SECTION_WRITE | SSB_SECTION_LOAD,
-    SSB_SECTION_BSS     = 0x13 | SSB_SECTION_WRITE,
-    SSB_SECTION_STACK   = 0x14 | SSB_SECTION_WRITE,
+    SSB_SECTION_TEXT    = 0x00 | SSB_SECTION_LOAD,
+    SSB_SECTION_RODATA  = 0x10 | SSB_SECTION_LOAD,
+    SSB_SECTION_DATA    = 0x20 | SSB_SECTION_WRITE | SSB_SECTION_LOAD,
+    SSB_SECTION_BSS     = 0x40 | SSB_SECTION_WRITE,
+    SSB_SECTION_STACK   = 0x80 | SSB_SECTION_WRITE,
 };
 
 struct ssb_section {
@@ -53,3 +53,5 @@ struct ssb_header {
     uint8_t section_count;
     struct ssb_section sections[];
 } __attribute__((__packed__));
+
+struct task *read_ssb(struct task *cur, const char *path);

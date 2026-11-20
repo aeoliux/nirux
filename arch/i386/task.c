@@ -2,6 +2,7 @@
 #include <string.h>
 #include <task.h>
 #include <regs.h>
+#include <kmem.h>
 
 extern uint8_t gdt_tss_entry[8];
 extern void gdt_load(void);
@@ -20,8 +21,8 @@ struct tss_entry {
 
 static struct tss_entry tss;
 
-void arch_task_init_stack(struct task *t, uword_t entry, uword_t user_sp) {
-    struct regs *r = (struct regs *)(t->kstack + t->kstack_size - sizeof(struct regs));
+void arch_task_init_stack(struct task *t, uword_t entry) {
+    struct regs *r = (struct regs *)(t->kstack + (STACKSIZ * meminfo.pagesize) - sizeof(struct regs));
     memset(r, 0, sizeof(struct regs));
 
     r->ds = t->is_kthread ? 0x10 : 0x23;
@@ -31,7 +32,7 @@ void arch_task_init_stack(struct task *t, uword_t entry, uword_t user_sp) {
     r->eflags = 0x202;
 
     if (!t->is_kthread) {
-        r->useresp = user_sp;
+        r->useresp = t->ustack + (t->ustacksiz * meminfo.pagesize);
         r->ss = 0x23;
     }
 

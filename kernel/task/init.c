@@ -2,7 +2,6 @@
 //#include <stdio.h>
 #include <string.h>
 #include <task.h>
-#include <errno.h>
 
 struct task ktask = {
     .state = TASK_RUNNING,
@@ -10,8 +9,7 @@ struct task ktask = {
     .is_kthread = 1,
     .pagedir = 0,
     .kstack = 0,
-    .uid = 0,
-    .gid = 0,
+    .user = 0xffffffff,
     .sections = {},
     .next = NULL
 };
@@ -25,40 +23,41 @@ int tasking_init() {
     return 0;
 }
 
-int task_create(uword_t flags, uword_t entry, uword_t pagedir) {
-    uword_t user_sp = 0, kstack = 0;
+struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
+    uword_t ustack = 0, kstack = 0;
 
     uint8_t is_kthread = ~flags == 0;
 
     if (!is_kthread)
-        if (!(user_sp = (uword_t) kalloc(STACKSIZ)))
-            return -ENOMEM;
+        if (!(ustack = (uword_t) kalloc(STACKSIZ)))
+            return NULL;
 
     if (!(kstack = (uword_t) kalloc(STACKSIZ))) {
-        if (user_sp) kfreen((void *) user_sp, STACKSIZ);
+        if (ustack) kfreen((void *) ustack, ustacksiz);
 
-        return -ENOMEM;
+        return NULL;
     }
 
     struct task *t = kalloc(1);
     if (!t) {
-        if (user_sp) kfreen((void *) user_sp, STACKSIZ);
+        if (ustack) kfreen((void *) ustack, ustacksiz);
         if (kstack) kfreen((void *) kstack, STACKSIZ);
 
-        return -ENOMEM;
+        return NULL;
     }
+    
+    memset((void *) ustack, 0, ustacksiz * meminfo.pagesize);
+    memset((void *) kstack, 0, STACKSIZ * meminfo.pagesize);
     memset(t, 0, sizeof (struct task));
 
     t->is_kthread = is_kthread;
-    t->pagedir = is_kthread ? ktask.pagedir : pagedir;
+    t->pagedir = is_kthread ? ktask.pagedir : 0;
     t->kstack = kstack;
-    t->kstack_size = STACKSIZ * meminfo.pagesize;
-    if (!is_kthread) {
-        t->uid = flags & 0xffff;
-        t->gid = (flags >> 16) & 0xffff;
-    }
+    t->ustack = ustack;
+    t->ustacksiz = ustacksiz;
+    t->user = flags;
 
-    arch_task_init_stack(t, entry, user_sp);
+    arch_task_init_stack(t, entry);
 
     // printf("%x %x %u\n", kstack, t->sp, t->kstack_size);
     // __asm__ volatile ("cli; hlt");
@@ -66,7 +65,7 @@ int task_create(uword_t flags, uword_t entry, uword_t pagedir) {
     last_task->next = t;
     last_task = t;
 
-    t->state = TASK_RUNNING;
+    t->state = TASK_READY;
 
-    return 0;
+    return t;
 }

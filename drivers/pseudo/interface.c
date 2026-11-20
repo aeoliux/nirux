@@ -6,6 +6,7 @@
 #include <kmem.h>
 
 enum pseudo_node_type {
+    PSEUDO_NODE_STDIO       = 0x04000000,
     PSEUDO_NODE_MEMORY      = 0x08000000,
     PSEUDO_NODE_CONSTANT    = 0x10000000,
     PSEUDO_NODE_DROP        = 0x20000000,
@@ -20,7 +21,9 @@ struct pseudo_node {
 };
 
 struct pseudo_node pseudo_nodes[] = {
-    {"output",  PSEUDO_NODE_REDIRECT | (4 * 256),   0600},
+    {"stdin",   PSEUDO_NODE_STDIO,                  0666},
+    {"stdout",  PSEUDO_NODE_STDIO,                  0666},
+    {"stderr",  PSEUDO_NODE_STDIO,                  0666},
     {"mem",     PSEUDO_NODE_MEMORY,                 0600},
     {"null",    PSEUDO_NODE_DROP,                   0666},
     {"zero",    PSEUDO_NODE_CONSTANT,               0666},
@@ -33,6 +36,9 @@ ssize_t pseudo_read(uint8_t major, uint8_t minor, size_t seek, void *restrict bu
 
     uint32_t limit, mode = pseudo_nodes[minor].mode;
     switch (mode & 0xff000000) {
+        case PSEUDO_NODE_STDIO:
+            // TO BE IMPLEMENTED PER PROCESS TODO!
+            return dread(0x400, &seek, buf, n);
         case PSEUDO_NODE_REDIRECT:
             return dread(mode & 0xffff, &seek, buf, n);
         case PSEUDO_NODE_CONSTANT:
@@ -58,6 +64,9 @@ ssize_t pseudo_write(uint8_t major, uint8_t minor, size_t seek, const void *buf,
 
     uint32_t limit, mode = pseudo_nodes[minor].mode;
     switch (mode & 0xff000000) {
+        case PSEUDO_NODE_STDIO:
+            // TO BE IMPLEMENTED PER PROCESS
+            return dwrite(0x400, &seek, buf, n);
         case PSEUDO_NODE_REDIRECT:
             return dwrite(mode & 0xffff, &seek, buf, n);
         case PSEUDO_NODE_CONSTANT:

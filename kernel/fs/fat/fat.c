@@ -196,7 +196,7 @@ ssize_t fs_fat_read(
                 n -= blk->sector_size - seek;
             } else {
                 size_t off = n % blk->sector_size;
-                memcpy(buf + done, &blk->buffer[1024], off);
+                memcpy(buf + done, &blk->buffer[1024 + seek], off);
                 done += off;
                 n = 0;
             }
