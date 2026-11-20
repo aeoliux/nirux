@@ -4,16 +4,18 @@
 #include <gdt.h>
 #include <irq.h>
 #include <pit.h>
+#include <regs.h>
 
 extern void kmain();
 
 void _i386_init(uint32_t _, multiboot_info_t *minfo) {
-    gdt_load();
+    // gdt_load();
     idt_load();
 
     initialise_basic_isrs();
 
     i8259_initialise();
+
     pit_set_frequency(100);
 
     if (initialise_mem_by_multiboot(minfo)) return;

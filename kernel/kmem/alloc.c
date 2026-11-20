@@ -42,6 +42,11 @@ void *kalloc(uword_t n) {
     return (void *) next_possible_page_addr;
 }
 
+void kfreen(void *pageptr, size_t n) {
+    for (size_t i = 0; i < n; i++)
+        kfree(pageptr + (i * meminfo.pagesize));
+}
+
 void kfree(void *pageptr) {
     // uword_t eip = (uword_t) __builtin_return_address(0);
 

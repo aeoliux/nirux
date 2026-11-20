@@ -2,7 +2,7 @@
 #include <device.h>
 #include <string.h>
 
-struct nirux_device_node device_nodes[256] = {0};
+struct nirux_device_node device_nodes[256];
 
 struct nirux_device_node *get_device_node(uint8_t major) {
     return device_nodes[major].iface ? &device_nodes[major] : NULL;

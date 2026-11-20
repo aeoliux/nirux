@@ -5,7 +5,7 @@
 #include <string.h>
 #include <fs.h>
 
-struct fs fs_mounts[MAXFSMNTED + 1] = {};
+struct fs fs_mounts[MAXFSMNTED + 1];
 
 ssize_t fs_get_mountpoint(const char *path, size_t *offset) {
     int not_mismatched = -1;

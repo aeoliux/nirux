@@ -11,7 +11,9 @@ KOBJ += \
 	arch/i386/mem.o \
 	arch/i386/irq.o \
 	arch/i386/gdt.o \
-	arch/i386/interrupt.o
+	arch/i386/interrupt.o \
+	arch/i386/paging.o \
+	arch/i386/task.o
 
 include arch/i386/i8259/Makefile
 include arch/i386/pit/Makefile

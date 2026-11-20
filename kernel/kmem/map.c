@@ -2,7 +2,7 @@
 #include <kmem.h>
 #include <string.h>
 
-struct memory_info meminfo = {0};
+struct memory_info meminfo;
 
 void initialise_map(const void *kernel_end, uword_t pagesize) {
     uword_t total = meminfo.total / pagesize;

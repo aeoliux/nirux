@@ -7,7 +7,7 @@
 #include <string.h>
 
 size_t block_devices_counter = 0;
-struct nirux_block_device block_devices[BLOCK_MAX_DEV] = {0};
+struct nirux_block_device block_devices[BLOCK_MAX_DEV];
 
 int block_modctl(uword_t op, void *arg) {
     uint16_t addr;

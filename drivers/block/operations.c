@@ -3,7 +3,7 @@
 #include <device.h>
 #include <errno.h>
 
-uint8_t block_read_buffer[4096] = {0};
+uint8_t block_read_buffer[4096];;
 ssize_t block_read_bytes(struct nirux_block_device *blk, struct nirux_block_driver *drv, size_t seek, void *restrict buf, size_t n) {
     size_t middle_sectors_start = (seek / blk->sector_size) + ((seek % blk->sector_size) > 0);
     size_t middle_sectors_count = (n / blk->sector_size) - (((n + seek) % blk->sector_size) > 0);

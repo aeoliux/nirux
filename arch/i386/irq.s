@@ -95,9 +95,8 @@ common_isr_handler:
     # pass pointer to pushed registers as argument to interrupt handler
     pushl %esp
     call i386_interrupt_handler
-    
-    # clean up pushed ESP
-    add $4, %esp
+
+    mov %eax, %esp
 
     # restore segments
     popl %eax

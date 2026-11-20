@@ -1,8 +1,10 @@
 #include <irq.h>
+#include <regs.h>
 #include <pit.h>
 #include <i8259.h>
 #include <panic.h>
 #include <stdio.h>
+#include <task.h>
 
 void idt_set_gate(uint8_t n, uint32_t addr, uint8_t flags) {
     __asm__ volatile ("cli");
@@ -16,7 +18,7 @@ void idt_set_gate(uint8_t n, uint32_t addr, uint8_t flags) {
     __asm__ volatile ("sti");
 }
 
-void i386_interrupt_handler(struct regs *r) {
+struct regs *i386_interrupt_handler(struct regs *r) {
     if (r->int_no > 255 || (!ihandlers[r->int_no].enabled && (r->int_no < 32 || r->int_no > 47)))
         panic("illegal interrupt '%x' ('%u')", &r->eip, r->int_no, r->int_no);
 
@@ -31,10 +33,17 @@ void i386_interrupt_handler(struct regs *r) {
     if (r->int_no >= 32 && r->int_no <= 47) {
         i8259_eoi(r->int_no - 0x20);
     }
+
+    if (r->int_no == 32) {
+        struct regs *scheduled = task_schedule(r);
+        return scheduled ? scheduled : r;
+    }
+
+    return r;
 }
 
 uword_t i386_cpu_exception(struct handler_args *args) {
-    printf("// Exception No. %x\n", args->int_no);
+    printf("// Exception No. %x (err_code = %x)\n", args->int_no, args->err_code);
     return 0;
 }
 

@@ -30,11 +30,14 @@ SECTIONS
 	}
 
 	/* Read-write data (uninitialized) and stack */
-	.bss BLOCK(4K) : ALIGN(4K)
+	.bss BLOCK(4K) (NOLOAD) : ALIGN(4K)
 	{
+		_bss_start = .;
 		*(COMMON)
 		*(.bss)
+		*(.bss.*)
 		*(.bssend)
+		_bss_end = .;
 	}
 
 	/* The compiler may produce other sections, by default it will put them in

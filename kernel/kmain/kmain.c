@@ -14,8 +14,14 @@
 #include <block.h>
 #include <ioport.h>
 #include <fs/fat.h>
+#include <task.h>
 
 extern int x86floppy_perform_command(uint8_t command, ...);
+
+static inline void msleep(size_t ms) {
+    size_t target = timer_elapsed + ms;
+    while (timer_elapsed < target) suspend();
+}
 
 static void list_dir_recursively(const char *path, size_t margin) {
     struct fs_direntry entry;
@@ -26,7 +32,7 @@ static void list_dir_recursively(const char *path, size_t margin) {
     while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
         for (size_t i = 0; i < margin; i++)
             putchar('-');
-        printf("/%s - %u:%u, %o\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode);
+        printf("/%s - %u:%u, %o, %u KB\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode, (uint32_t) entry.size / 1024);
 
         if (entry.type & FS_DIR) {
             memset(buf, 0, sizeof buf);
@@ -41,6 +47,13 @@ static void list_dir_recursively(const char *path, size_t margin) {
     if (!margin) printf("Done with result = %d\n", result);
 }
 
+static void simple_task() {
+    printf("Listing / recursively:\n");
+    list_dir_recursively("/", 0);
+
+    while (1) { printf("What are you waiting for?\n"); msleep(2000); }
+}
+
 void kmain() {
     //
     // ONLY BASIC TESTS HERE
@@ -48,6 +61,8 @@ void kmain() {
 
     // register syscall
     register_syscall();
+
+    tasking_init();
 
     // initialise interfaces
     pseudo_interface.init(NULL);
@@ -82,7 +97,9 @@ void kmain() {
         if (fs_mount(0, "/dev", &fs_devfs) >= 0)
             printf("// Mounted devfs on /dev\n");
 
-        printf("Listing / recursively:\n");
-        list_dir_recursively("/", 0);
+        
+        task_create(0xffffffff, (uword_t) simple_task, 0);
+        
+        while (1) { printf("PRINTING LOOP!!!\n"); msleep(250); }
     }
 }

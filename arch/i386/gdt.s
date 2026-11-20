@@ -21,6 +21,28 @@ gdt_start:
     .byte 0x92 # access (data, writable, ring 0)
     .byte 0xcf
     .byte 0x00
+
+    # 0x18: User code segment (Ring 3 -> selector 0x1b)
+    .word 0xffff
+    .word 0x0000
+    .byte 0x00
+    .byte 0xfa   # access (code, readable, ring 3)
+    .byte 0xcf
+    .byte 0x00
+
+    # 0x20: User data segment (Ring 3 -> selector 0x23)
+    .word 0xffff
+    .word 0x0000
+    .byte 0x00
+    .byte 0xf2   # access (data, writable, ring 3)
+    .byte 0xcf
+    .byte 0x00
+
+    # 0x28: TSS descriptor (filled at runtime from C)
+.global gdt_tss_entry
+gdt_tss_entry:
+    .long 0
+    .long 0
 gdt_end:
 
 gdt_ptr:
@@ -44,4 +66,10 @@ gdt_load:
     ljmp $0x8, $.reload_cs
 
 .reload_cs:
+    ret
+
+.global tss_flush
+tss_flush:
+    mov $0x28, %ax
+    ltr %ax
     ret

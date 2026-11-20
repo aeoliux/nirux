@@ -13,7 +13,7 @@ struct nirux_framebuffer_driver *framebuffer_drivers[] = { &vga_framebuffer_driv
 struct framebuffer_minor_node {
     struct nirux_framebuffer_driver *driver;
     uint8_t output;
-} __attribute__((__packed__)) framebuffer_devices[NFBDEV_MAX_OUTPUTS] = {0};
+} __attribute__((__packed__)) framebuffer_devices[NFBDEV_MAX_OUTPUTS];
 uint8_t framebuffer_devices_counter = 0;
 
 ssize_t video_read(uint8_t major, uint8_t minor, size_t seek, void *restrict buf, size_t n) {
@@ -138,7 +138,6 @@ int video_modctl(uword_t op, void *arg) {
 
         default:
             if (op & 0xf0000000) {
-                uint8_t major = op & 0xff;
                 uint8_t minor = (op >> 8) & 0xff;
 
                 struct framebuffer_minor_node *fbnode = &framebuffer_devices[minor];
