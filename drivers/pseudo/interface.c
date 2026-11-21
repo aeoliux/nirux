@@ -1,9 +1,11 @@
+#include <unistd.h>
 #include <device.h>
 #include <driver.h>
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
 #include <kmem.h>
+#include <fcntl.h>
 
 enum pseudo_node_type {
     PSEUDO_NODE_STDIO       = 0x04000000,
@@ -34,11 +36,13 @@ ssize_t pseudo_read(uint8_t major, uint8_t minor, size_t seek, void *restrict bu
     if (minor > 4)
         return -ENXIO;
 
+    ssize_t result;
     uint32_t limit, mode = pseudo_nodes[minor].mode;
     switch (mode & 0xff000000) {
         case PSEUDO_NODE_STDIO:
-            // TO BE IMPLEMENTED PER PROCESS TODO!
-            return dread(0x400, &seek, buf, n);
+            result = read(4, buf, n);
+
+            return (result >= 0) ? result : dread(0x400, &seek, buf, n);
         case PSEUDO_NODE_REDIRECT:
             return dread(mode & 0xffff, &seek, buf, n);
         case PSEUDO_NODE_CONSTANT:
@@ -62,11 +66,13 @@ ssize_t pseudo_write(uint8_t major, uint8_t minor, size_t seek, const void *buf,
     if (minor > 4)
         return -ENXIO;
 
-    uint32_t limit, mode = pseudo_nodes[minor].mode;
+    ssize_t result;
+    uint32_t mode = pseudo_nodes[minor].mode;
     switch (mode & 0xff000000) {
         case PSEUDO_NODE_STDIO:
-            // TO BE IMPLEMENTED PER PROCESS
-            return dwrite(0x400, &seek, buf, n);
+            result = write(4, buf, n);    
+
+            return (result >= 0) ? result : dwrite(0x400, &seek, buf, n);
         case PSEUDO_NODE_REDIRECT:
             return dwrite(mode & 0xffff, &seek, buf, n);
         case PSEUDO_NODE_CONSTANT:
@@ -84,7 +90,7 @@ int pseudo_ioctl(uint8_t major, uint8_t minor, int op, void *arg) {
     if (minor > 4)
         return -ENXIO;
 
-    uint32_t limit, mode = pseudo_nodes[minor].mode;
+    uint32_t mode = pseudo_nodes[minor].mode;
     switch (mode & 0xff000000) {
         case PSEUDO_NODE_REDIRECT:
             return dioctl(mode & 0xffff, op, arg);
@@ -99,7 +105,7 @@ int pseudo_modctl(uword_t op, void *arg) {
 
         default:
             if (op & 0xf0000000) {
-                uint8_t major = op & 0xff;
+                //uint8_t major = op & 0xff;
                 uint8_t minor = (op >> 8) & 0xff;
 
                 if (minor > 4)

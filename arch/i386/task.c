@@ -32,7 +32,7 @@ void arch_task_init_stack(struct task *t, uword_t entry) {
     r->eflags = 0x202;
 
     if (!t->is_kthread) {
-        r->useresp = t->ustack + (t->ustacksiz * meminfo.pagesize);
+        r->useresp = 0x80000000 + (t->ustacksiz * meminfo.pagesize);
         r->ss = 0x23;
     }
 

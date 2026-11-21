@@ -24,9 +24,9 @@ ssize_t block_read_bytes(struct nirux_block_device *blk, struct nirux_block_driv
     ssize_t nread = 0;
     if (middle_sectors_count) {
         nread = drv->read(blk, middle_sectors_start, buf + left_remaining_bytes, middle_sectors_count);
-        if (nread < middle_sectors_count) {
+        if (nread < (ssize_t) middle_sectors_count) {
             if (nread < 0)
-                return left_remaining_bytes ? left_remaining_bytes : nread;
+                return left_remaining_bytes ? (ssize_t) left_remaining_bytes : nread;
             else
                 return (nread * blk->sector_size) + left_remaining_bytes;
         }
@@ -61,7 +61,7 @@ ssize_t block_read_block(struct nirux_block_device *blk, struct nirux_block_driv
     result *= blk->sector_size;
 
     if (dst == block_read_buffer && result > 0)
-        memcpy(buf, dst, result > n ? n : result);
+        memcpy(buf, dst, result > (ssize_t) n ? (ssize_t) n : result);
 
-    return result > n ? n : result;
+    return (size_t) result > n ? (ssize_t) n : result;
 }

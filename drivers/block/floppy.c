@@ -19,7 +19,7 @@ int block_floppy_probe() {
 
         ssize_t probed = 0;
         if ((probed = driver->probe(prober, BLOCK_MAX_FLOPPY_DRV - block_floppy_drives_count)) > 0) {
-            for (size_t j = 0; j < probed; j++) {
+            for (size_t j = 0; j < (size_t) probed; j++) {
                 uint32_t drive_type = prober[j];
 
                 struct nirux_block_device device = {

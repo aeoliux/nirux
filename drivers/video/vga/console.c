@@ -70,7 +70,7 @@ void vga_console_init() {
 
     size_t clear_since = VGA_INDEX(0, vga_framebuffer_driver.outputs[0].cursor_y, VGA_WIDTH);
     memset16(
-        &(vga_framebuffer_driver.outputs[0].buffer[clear_since * sizeof(uint16_t)]),
+        &(((uint8_t *) vga_framebuffer_driver.outputs[0].buffer)[clear_since * sizeof(uint16_t)]),
         VGA_ENTRY_CHAR,
         VGA_WIDTH * VGA_HEIGHT - clear_since
     );

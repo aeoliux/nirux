@@ -18,7 +18,7 @@ int vtt_buffer_set_cursor(struct nirux_vtt *vtt, uint16_t x, uint16_t y, uint8_t
 int vtt_buffer_scroll_by(struct nirux_vtt *vtt, size_t by, uint8_t direct) {
     if (direct) return video_interface.ioctl(0, 0, IOFBDEVTXSCRL, &by);
     else {
-        uint16_t *addr = (uint16_t *) vtt->buffer;
+        uint16_t *addr = (uint16_t *) (vtt->buffer);
 
         for (size_t i = 1; i < vtt_height; i++) {
             uint16_t *from = &addr[i * vtt_width], *to = &addr[(i - 1) * vtt_width];

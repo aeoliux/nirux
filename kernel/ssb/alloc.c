@@ -9,7 +9,7 @@ struct task *read_ssb(struct task *cur, const char *path) {
     // CHECK FILE PERMISSIONS TODO!
 
     struct ssb_header hdr;
-    if (fs_read_path(path, 0, &hdr, sizeof(hdr)) < sizeof(hdr) || hdr.magic != SSB_MAGIC)
+    if (fs_read_path(path, 0, &hdr, sizeof(hdr)) < (ssize_t) sizeof(hdr) || hdr.magic != SSB_MAGIC)
         return 0;
 
     // PERFORM ABI CHECK TODO!
@@ -21,14 +21,14 @@ struct task *read_ssb(struct task *cur, const char *path) {
     if (
         fs_read_path(
             path, sizeof(hdr), &sc, hdr.section_count * sizeof(struct ssb_section)
-        ) < hdr.section_count * sizeof(struct ssb_section)
+        ) < (ssize_t) (hdr.section_count * sizeof(struct ssb_section))
         || sc[0].type != SSB_SECTION_STACK
     )
         return 0;
 
     uword_t ustacksiz = ustacksiz = (uword_t) sc[0].length / meminfo.pagesize;
             
-    struct task *t;
+    struct task *t = NULL;
     if (!ustacksiz || !(t = task_create(0, hdr.entry, ustacksiz))) {
         if (t) {
             t->state = TASK_FAULT;
@@ -60,7 +60,7 @@ struct task *read_ssb(struct task *cur, const char *path) {
             t->sections[i].rw = s->type & SSB_SECTION_WRITE;
 
             if (s->type & SSB_SECTION_LOAD) {
-                if (fs_read_path(path, s->offset, (void *) t->sections[i].ptr, s->length) < (uword_t) s->length)
+                if ((int64_t) fs_read_path(path, s->offset, (void *) t->sections[i].ptr, s->length) < (int64_t) s->length)
                     goto error;
             }
         }

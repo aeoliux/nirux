@@ -1,11 +1,20 @@
 #pragma once
 
 #include <fs.h>
-#include <fd.h>
 #include <regs.h>
 #include <irq.h>
 
 #define STACKSIZ 2
+
+struct file_descriptor {
+    size_t tasks;
+
+    int flags;
+    char path[MAXPATHSIZ + 1];
+
+    struct fs *mnt;
+    struct fs_direntry ref;
+};
 
 enum task_section_type {
     SECTION_TEXT,
@@ -56,8 +65,10 @@ struct task {
 
     struct task *next;
 
-    int fds[];
+    uint64_t fds[];
 } __attribute__((__aligned__(4096)));
+
+#define MAXFDS ((4096 - 96) / (int) sizeof(uint64_t) / 2)
 
 extern struct task ktask;
 extern struct task *current_task;

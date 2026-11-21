@@ -4,3 +4,6 @@
 nImage-*
 /compile_flags.txt
 /.clangd
+/**/a.out
+*.ssb
+*.a

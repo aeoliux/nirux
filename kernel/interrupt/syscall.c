@@ -6,6 +6,7 @@
 #include <device.h>
 #include <task.h>
 #include <kmem.h>
+#include <unistd.h>
 
 uword_t syscall(struct handler_args *args) {
     struct task *t = (struct task *) args->caller;
@@ -16,7 +17,13 @@ uword_t syscall(struct handler_args *args) {
             task_exit(args->caller, TASK_EXITED, (uint64_t) args->arg1);
             break;
         
-        // SPECIAL
+        case SYS_WRITE:
+            if (args->arg2 < 0x80000000 || args->arg2 > 0x80000000 + (t->occupied * meminfo.pagesize))
+                task_exit(t, TASK_FAULT, 0);
+
+            return (uword_t) write(args->arg1, (void *) args->arg2, args->arg3);
+
+        // SPECIAL CALLS
 
         case SYS_DREAD:
         case SYS_DWRITE:

@@ -12,8 +12,11 @@ typedef short int16_t;
 typedef char int8_t;
 
 #ifdef __i386__
-typedef uint32_t size_t;
-typedef size_t uword_t;
-typedef int32_t ssize_t;
-typedef ssize_t word_t;
+typedef uint32_t uword_t;
+typedef int32_t word_t;
 #endif
+
+typedef int32_t off_t;
+typedef int64_t off64_t;
+typedef uword_t size_t;
+typedef word_t ssize_t;

@@ -1,6 +1,6 @@
 #include <fs.h>
 #include <unistd.h>
-#include <string.h>
+#include <fcntl.h>
 #include <x86floppy.h>
 #include <irq.h>
 #include <fbdev.h>

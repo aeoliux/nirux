@@ -6,7 +6,6 @@ TRACK += \
 	include/internal/kmem.h \
 	include/internal/uname.h \
 	include/internal/panic.h \
-	include/internal/fd.h \
 	include/internal/task.h
 
 TRACK += \

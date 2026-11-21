@@ -72,7 +72,7 @@ ssize_t x86floppy_probe(uint32_t *out, size_t limit) {
 }
 
 ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n) {
-    ssize_t done = 0;
+    size_t done = 0;
 
     switch (command) {
         case BLOCK_FLOPPY_READ: command = 0; break;
@@ -98,7 +98,7 @@ ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *r
 
     x86floppy_set_motor(drive, 0);
 
-    return done;
+    return (ssize_t) done;
 }
 
 struct nirux_block_floppy_driver x86floppy_driver = {

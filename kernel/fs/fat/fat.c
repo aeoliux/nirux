@@ -159,7 +159,7 @@ ssize_t fs_fat_read(
     size_t read_limit = seek + n;
     if (read_limit > dir->size) {
         if (seek > dir->size)
-            return -EINVAL;
+            return 0;
         
         n = dir->size - seek;
     }

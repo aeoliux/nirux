@@ -161,7 +161,7 @@ ihandler_t i386_ihandlers[256] = {
 void initialise_basic_isrs() {
     ihandlers = i386_ihandlers;
 
-    for (size_t i = 0; i <= 0x30; i++)
+    for (size_t i = 0; i < sizeof(i386_isrs) / sizeof(void *); i++)
         register_isr(i, (uword_t) i386_isrs[i], 0);
 
     register_isr(0x80, (uword_t) isr0x80, 1);

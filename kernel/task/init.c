@@ -1,3 +1,6 @@
+#include "fcntl.h"
+#include "stdint.h"
+#include "unistd.h"
 #include <kmem.h>
 //#include <stdio.h>
 #include <string.h>
@@ -19,6 +22,8 @@ struct task *last_task = &ktask;
 
 int tasking_init() {
     arch_setup_ktask();
+
+    memset(ktask.fds, 0, MAXFDS * 2);
 
     return 0;
 }
@@ -56,6 +61,33 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
     t->ustack = ustack;
     t->ustacksiz = ustacksiz;
     t->user = flags;
+
+    if ((is_kthread && current_task->is_kthread) || (!is_kthread && !current_task->is_kthread)) {
+        memcpy(t->fds, current_task->fds, MAXFDS);
+
+        for (size_t fd = 0; fd < MAXFDS && t->fds[fd * 2]; fd++) {
+            struct file_descriptor *f = (struct file_descriptor *) t->fds[fd * 2];
+            f->tasks++;
+        }
+    } else {
+        int stdin = open_at_task(t, "/dev/stdin", O_RDONLY, NULL);
+        int stdout = open_at_task(t, "/dev/stdout", O_WRONLY, NULL);
+        int stderr = open_at_task(t, "/dev/stderr", O_WRONLY, NULL);
+        int vtt = open_at_task(t, "/dev/vtt0", O_RDWR, NULL);
+
+        if (stdin < 0 || stdout < 1 || stderr < 2 || vtt < 3) {
+            close_at_task(t, stdin);
+            close_at_task(t, stdout);
+            close_at_task(t, stderr);
+
+            if (ustack) kfreen((void *) ustack, ustacksiz);
+            if (kstack) kfreen((void *) kstack, STACKSIZ);
+
+            kfree(t);
+
+            return NULL;
+        }
+    }
 
     arch_task_init_stack(t, entry);
 
