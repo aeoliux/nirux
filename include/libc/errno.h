@@ -4,6 +4,7 @@
 #define ENOENT 2
 #define EIO 5
 #define ENXIO 6
+#define ENOEXEC 8
 #define EBADF 9
 #define ENOMEM 12
 #define EFAULT 14

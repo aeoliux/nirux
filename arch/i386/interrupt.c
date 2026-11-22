@@ -22,9 +22,9 @@ struct regs *i386_interrupt_handler(struct regs *r) {
     if (r->int_no > 255 || (!ihandlers[r->int_no].enabled && (r->int_no < 32 || r->int_no > 47)))
         panic("illegal interrupt '%x' ('%u')", &r->eip, r->int_no, r->int_no);
 
+    __asm__ volatile ("sti");
     ihandler_t *ihandler = &ihandlers[r->int_no];
     struct handler_args args = {r->int_no, r->err_code, r->eip, r->eax, r->ebx, r->ecx, r->edx, r->esi, r->edi, r->ebp, (uword_t) r, current_task};
-    __asm__ volatile ("sti");
     if (ihandler->handler) {
         uword_t result = ihandler->handler(&args);
         if (ihandler->does_return)
@@ -39,7 +39,7 @@ struct regs *i386_interrupt_handler(struct regs *r) {
 }
 
 uword_t i386_cpu_exception(struct handler_args *args) {
-    printf("// Exception No. %x (err_code = %x)\n", args->int_no, args->err_code);
+    printf("// Exception No. %x (err_code = %x, eip = %x, eax = %x)\n", args->int_no, args->err_code, args->return_address, args->arg0);
 
     task_exit(args->caller, TASK_FAULT, (uint64_t) ((uint64_t) args->int_no << 32 | args->err_code));
     return 0;

@@ -23,21 +23,26 @@ static inline int am_i_allowed(int type, struct task *t, struct fs_direntry *f) 
     return (mode >> type) & 0x1;
 }
 
-static inline struct file_descriptor *extract_fd(struct task *t, int fd) {
-    struct file_descriptor *f = (struct file_descriptor *) t->fds[fd * 2];
-    return (!f || fd >= MAXFDS || fd < 0) ? NULL : f;
-}
-
-int open_at_task(struct task *t, const char *path, int flags, uint16_t *mode) {
-    static struct file_descriptor *fdpage = NULL;
-
+static inline int find_free_fd(struct task *t) {
     int fd = 0;
     for (; fd < MAXFDS; fd++)
         if (!t->fds[fd * 2])
             break;
 
-    if (fd >= MAXFDS)
-        return -ENOMEM;
+    return fd >= MAXFDS ? -ENOMEM : fd;
+}
+
+static inline struct file_descriptor *extract_fd(struct task *t, int fd) {
+    struct file_descriptor *f = (struct file_descriptor *) t->fds[fd * 2];
+    return (!f || fd >= MAXFDS || fd < 0) ? NULL : f;
+}
+
+int open_at_task(struct task *t, const char *path, int flags, uint32_t mode) {
+    static struct file_descriptor *fdpage = NULL;
+
+    int fd;
+    if ((fd = find_free_fd(t)) < 0)
+        return fd;
 
     struct fs_direntry f;
     struct fs *mnt;
@@ -48,11 +53,14 @@ int open_at_task(struct task *t, const char *path, int flags, uint16_t *mode) {
 
     if (flags & 0x8)
         return -ENOSUP;
-
+    
     if (flags & O_RDONLY && !am_i_allowed(2, t, &f))
         return -EPERM;
 
     if (flags & O_WRONLY && !am_i_allowed(1, t, &f))
+        return -EPERM;
+
+    if (flags & 0x100 && !am_i_allowed(0, t, &f))
         return -EPERM;
 
     ssize_t index = -1;
@@ -94,9 +102,9 @@ int open_at_task(struct task *t, const char *path, int flags, uint16_t *mode) {
 }
 
 int open(const char *path, int flags, ...) {
-    uint16_t *mode = (uint16_t *) ((uint8_t *) &flags + sizeof(int));
+    uint32_t *mode = (uint32_t *) ((uint8_t *) &flags + sizeof(int));
 
-    return open_at_task(current_task, path, flags, mode);
+    return open_at_task(current_task, path, flags, flags & 0x8 ? *mode: 0);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
@@ -150,6 +158,20 @@ ssize_t write(int fd, const void *buf, size_t n) {
     if (result > 0) *seek_ptr = seek + (uint64_t) result;
 
     return result;
+}
+
+int dup(int fd) {
+    struct file_descriptor *f = extract_fd(current_task, fd);
+    if (!f) return -EBADF;
+
+    int new_fd;
+    if ((new_fd = find_free_fd(current_task)) < 0)
+        return new_fd;
+
+    current_task->fds[new_fd * 2] = current_task->fds[fd * 2];
+    current_task->fds[new_fd * 2] = 0;
+
+    return new_fd;
 }
 
 int close_at_task(struct task *t, int fd) {

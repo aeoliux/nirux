@@ -1,3 +1,5 @@
+#include <fs.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <irq.h>
 #include <stdio.h>
@@ -8,33 +10,53 @@
 #include <kmem.h>
 #include <unistd.h>
 
+static inline void check_mem_perm(struct task *t, uword_t addr) {
+    if (addr < 0x80000000 || addr > 0x80000000 + (t->occupied * meminfo.pagesize))
+        task_exit(t, TASK_FAULT, 0);
+}
+
 uword_t syscall(struct handler_args *args) {
     struct task *t = (struct task *) args->caller;
+    struct fs_driver *fsdrv;
 
     switch (args->arg0) {
         case SYS_EXIT:
             printf("Exit code: %d\n", (int) args->arg1);
             task_exit(args->caller, TASK_EXITED, (uint64_t) args->arg1);
             break;
-        
+        case SYS_READ:
+            check_mem_perm(t, args->arg2);
+            return (uword_t) read((int) args->arg1, (void *) args->arg2, (size_t) args->arg3);
         case SYS_WRITE:
-            if (args->arg2 < 0x80000000 || args->arg2 > 0x80000000 + (t->occupied * meminfo.pagesize))
-                task_exit(t, TASK_FAULT, 0);
+            check_mem_perm(t, args->arg2);
+            return (uword_t) write((int) args->arg1, (void *) args->arg2, (size_t) args->arg3);
+        case SYS_OPEN:
+            return (uword_t) open((void *) args->arg1, (int) args->arg2, (uint32_t) args->arg3);
+        case SYS_CLOSE:
+            return (uword_t) close((int) args->arg1);
 
-            return (uword_t) write(args->arg1, (void *) args->arg2, args->arg3);
+        case SYS_EXECVE:
+            return (uword_t) execve((char *) args->arg1, (char *const *) args->arg2, (char *const *) args->arg3, args);
 
+        case SYS_LSEEK:
+            return (uword_t) lseek((int) args->arg1, (off_t) args->arg2, (int) args->arg3);
+
+        case SYS_DUP:
+            return (uword_t) dup((int) args->arg1);
         // SPECIAL CALLS
 
+        case SYS_DMNTRT:
+            check_mem_perm(t, args->arg2);
+            fsdrv = fs_get_driver((void *) args->arg2);
+
+            return fs_mount_root((uint16_t) args->arg1, fsdrv);
         case SYS_DREAD:
         case SYS_DWRITE:
         case SYS_DIOCTL:
             if (!t->is_kthread && t->user)
                 return -EPERM;
 
-            uword_t memlimit = 0x80000000 + (t->occupied * meminfo.pagesize);
-            
-            if (args->arg3 < 0x80000000 || args->arg3 > memlimit)
-                task_exit(t, TASK_FAULT, 0);
+            check_mem_perm(t, args->arg3);
 
             size_t seek = args->arg2;
             switch (args->arg0) {

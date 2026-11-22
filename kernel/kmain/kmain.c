@@ -1,3 +1,5 @@
+#include "panic.h"
+#include "stdint.h"
 #include <fs.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -56,10 +58,15 @@
 //     exit(0);
 // }
 
+struct ssb_header *ssb_payload = NULL;
+size_t ssb_payload_size = 0;
+
 void kmain() {
     //
     // ONLY BASIC TESTS HERE
     //
+
+    void *ret = __builtin_return_address(0);
 
     // register syscall
     register_syscall();
@@ -82,8 +89,8 @@ void kmain() {
     int floppy_ready = !block_floppy_driver.probe();
 
     printf("// Nirux %s %s\n", UNAME_M, UNAME_R);
-    printf("// %d KB total memory, %d KB reserved\n", meminfo.total / 1024, meminfo.reserved / 1024);
-    printf("// %d KB used memory\n", meminfo.used / 1024);
+    printf("// %d KB total memory\n", (meminfo.total - meminfo.reserved) / 1024);
+    printf("// %d KB used + reserved memory\n", (meminfo.used - meminfo.reserved) / 1024);
 
     uint16_t seek = 0;
     struct nirux_device_info dev = {{0}, {0}, 0, 0};
@@ -94,17 +101,29 @@ void kmain() {
 
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 
-    if (floppy_ready && fs_mount_root(0x900, &fs_fat) >= 0) {
-        printf("// Mounted /dev/fdblk0 as /\n");
-        if (fs_mount(0, "/dev", &fs_devfs) >= 0)
-            printf("// Mounted devfs on /dev\n");
+    int result = 0;
+    if ((result = fs_mount(0, "/dev", &fs_devfs)) < 0)
+        panic("couldn't mount /dev: %d", ret, result);
+    printf("// Mounted devfs on /dev\n");
 
-        printf("Executing /bin/a.ssb..\n");
-        struct task *t = read_ssb(current_task, "/bin/a.ssb");
-        if (t) t->state = TASK_RUNNING;
+    const char *argv[] = {"init", NULL};
+    if (ssb_payload_size && ssb_payload) {
+        printf("// Executing ssb payload as init script\n");
+        if ((result = exec_ssb(SSB_SRC_MEM, (uword_t) ssb_payload, argv, NULL, NULL)) < 0)
+            panic("payload execution failed, exec_ssb = %d", ret, result);
+    } else if (floppy_ready) {
+        printf("// Attempting to mount /dev/fdblk0 (FAT) as /\n");
+        if ((result = fs_mount_root(0x900, &fs_fat)))
+            panic("couldn't mount /dev/fdblk0, fs_mount = %d", ret, result);
 
-        while (t->state & TASK_RUNNING) { suspend(); }
+        int fd;
+        printf("// /init\n");
+        if ((fd = open("/init", O_EXEC)) < 0)
+            panic("couldn't execute /init, open = %d", ret, fd);
 
-        printf("Task finished!\n");
-    }
+        if ((result = exec_ssb(SSB_SRC_FILE, (uword_t) fd, argv, NULL, NULL)) < 0)
+            panic("/init execution failed, exec_ssb = %d", ret, result);
+    } else panic("no /", ret);
+
+    while (1) suspend();
 }

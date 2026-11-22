@@ -1,10 +1,14 @@
-#include "fcntl.h"
-#include "stdint.h"
-#include "unistd.h"
+#include <irq.h>
+#include <fcntl.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <unistd.h>
 #include <kmem.h>
 //#include <stdio.h>
 #include <string.h>
 #include <task.h>
+#include <ioport.h>
+#include <errno.h>
 
 struct task ktask = {
     .state = TASK_RUNNING,
@@ -12,6 +16,7 @@ struct task ktask = {
     .is_kthread = 1,
     .pagedir = 0,
     .kstack = 0,
+    .env_section = 0,
     .user = 0xffffffff,
     .sections = {},
     .next = NULL
@@ -59,7 +64,7 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
     t->pagedir = is_kthread ? ktask.pagedir : 0;
     t->kstack = kstack;
     t->ustack = ustack;
-    t->ustacksiz = ustacksiz;
+    t->ustacksiz = is_kthread ? 0 : ustacksiz;
     t->user = flags;
 
     if ((is_kthread && current_task->is_kthread) || (!is_kthread && !current_task->is_kthread)) {
@@ -70,10 +75,10 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
             f->tasks++;
         }
     } else {
-        int stdin = open_at_task(t, "/dev/stdin", O_RDONLY, NULL);
-        int stdout = open_at_task(t, "/dev/stdout", O_WRONLY, NULL);
-        int stderr = open_at_task(t, "/dev/stderr", O_WRONLY, NULL);
-        int vtt = open_at_task(t, "/dev/vtt0", O_RDWR, NULL);
+        int stdin = open_at_task(t, "/dev/stdin", O_RDONLY, 0);
+        int stdout = open_at_task(t, "/dev/stdout", O_WRONLY, 0);
+        int stderr = open_at_task(t, "/dev/stderr", O_WRONLY, 0);
+        int vtt = open_at_task(t, "/dev/vtt0", O_RDWR, 0);
 
         if (stdin < 0 || stdout < 1 || stderr < 2 || vtt < 3) {
             close_at_task(t, stdin);
@@ -89,7 +94,7 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
         }
     }
 
-    arch_task_init_stack(t, entry);
+    arch_task_init_stack(t, entry, 0);
 
     // printf("%x %x %u\n", kstack, t->sp, t->kstack_size);
     // __asm__ volatile ("cli; hlt");
@@ -100,4 +105,17 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
     t->state = TASK_READY;
 
     return t;
+}
+
+int task_switch(struct handler_args *args, uword_t entry, size_t envsize) {
+    if (current_task == &ktask)
+        return -EPERM;
+
+    idisable();
+
+    arch_task_init_stack(current_task, entry, envsize);
+    arch_pagedir_set(current_task->pagedir);
+    args->stack = current_task->sp;
+
+    return 0;
 }

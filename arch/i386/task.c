@@ -21,7 +21,7 @@ struct tss_entry {
 
 static struct tss_entry tss;
 
-void arch_task_init_stack(struct task *t, uword_t entry) {
+void arch_task_init_stack(struct task *t, uword_t entry, size_t envsize) {
     struct regs *r = (struct regs *)(t->kstack + (STACKSIZ * meminfo.pagesize) - sizeof(struct regs));
     memset(r, 0, sizeof(struct regs));
 
@@ -32,7 +32,7 @@ void arch_task_init_stack(struct task *t, uword_t entry) {
     r->eflags = 0x202;
 
     if (!t->is_kthread) {
-        r->useresp = 0x80000000 + (t->ustacksiz * meminfo.pagesize);
+        r->useresp = 0x80000000 + (t->ustacksiz * meminfo.pagesize) - (1 * sizeof(int)) - ((envsize + 2) * sizeof(char *));
         r->ss = 0x23;
     }
 

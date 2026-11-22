@@ -102,3 +102,11 @@ ssize_t fs_resolve_file(const char *pth, struct fs **mnt, struct fs_direntry *re
 
 int fs_is_dir(const char *path);
 int fs_mount(uint16_t device, const char *path, struct fs_driver *fsdrv);
+
+struct fs_driver_entry {
+    char name[DRVNAMLEN + 1];
+    struct fs_driver *drv;
+};
+
+extern struct fs_driver_entry *fs_drivers;
+struct fs_driver *fs_get_driver(const char *fsname);

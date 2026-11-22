@@ -98,6 +98,22 @@ int fs_is_dir(const char *path) {
     return !result ? entry.type & FS_DIR : 0;
 }
 
+int fs_is_file(const char *path) {
+    struct fs_direntry entry;
+    struct fs *mnt;
+
+    ssize_t result = fs_resolve_file(path, &mnt, &entry);
+    return !result ? entry.type & (FS_FILE | FS_FIFO | FS_NODE | FS_CTL) : 0;
+}
+
+int fs_does_exist(const char *path) {
+    struct fs_direntry entry;
+    struct fs *mnt;
+
+    ssize_t result = fs_resolve_file(path, &mnt, &entry);
+    return !result ? 1 : 0;
+}
+
 ssize_t fs_read_dir(const char *path, size_t *seek, struct fs_direntry *restrict out) {
     static char current_path[MAXPATHSIZ + 1];
     static struct fs_direntry dir;
@@ -144,14 +160,14 @@ int fs_mount(uint16_t device, const char *path, struct fs_driver *fsdrv) {
         return -EINVAL;
 
     struct fs *mnt = NULL;
-    for (size_t i = 0; i < MAXFSMNTED; i++)
+    for (size_t i = 1; i < MAXFSMNTED; i++)
         if (!fs_mounts[i].driver)
             mnt = &fs_mounts[i];
     
     if (!mnt)
         return -ENOMEM;
 
-    if (!fs_is_dir(path))
+    if (strcmp(path, "/dev") && fsdrv != &fs_devfs && !fs_is_dir(path))
         return -ENOTDIR;
 
     int result = fsdrv->initialise(device);

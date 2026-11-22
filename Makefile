@@ -13,8 +13,8 @@ AR = ${CROSS_COMPILE}ar
 STRIP = ${CROSS_COMPILE}strip
 
 INCLUDE = -Iinclude/libc -Iinclude/internal -Iinclude/internal/$(ARCH)
-CFLAGS = -march=$(MARCH) -std=c99 -nostdlib -mno-sse -mno-mmx -msoft-float -nostdinc -nodefaultlibs -fno-pie -fno-pic -ffreestanding -O$(OPTIMISE) -Wall -Wextra -Wno-unused-parameter $(INCLUDE) -Wno-int-to-pointer-cast
-LDFLAGS = -march=$(MARCH) -fno-pie -fno-pic -static -ffreestanding -O$(OPTIMISE) -nostdlib -nostdinc -nodefaultlibs -z noexecstack -T arch/$(ARCH)/linkerconfig.ld
+CFLAGS = -march=$(MARCH) -std=c99 -nostdlib -mno-sse -mno-mmx -msoft-float -nostdinc -nodefaultlibs -fno-pie -fno-pic -fno-stack-protector -ffreestanding -O$(OPTIMISE) -Wall -Wextra -Wno-unused-parameter $(INCLUDE) -Wno-int-to-pointer-cast
+LDFLAGS = -march=$(MARCH) -fno-pie -fno-pic -static -ffreestanding -O$(OPTIMISE) -nostdlib -nostdinc -nodefaultlibs -fno-stack-protector -z noexecstack -T arch/$(ARCH)/linkerconfig.ld
 ASFLAGS =
 
 ifeq ($(ARCH), i386)

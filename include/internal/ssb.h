@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <irq.h>
 
 #define SSB_MAGIC 0x0A425353 // ascii: SSB\n
 
@@ -49,9 +50,19 @@ struct ssb_header {
     uint64_t abi;
     uint64_t abi_flags;
     uint64_t entry;
+    uint64_t size;
 
     uint8_t section_count;
     struct ssb_section sections[];
 } __attribute__((__packed__));
 
-struct task *read_ssb(struct task *cur, const char *path);
+enum SSB_SOURCE {
+    SSB_SRC_MEM,
+    SSB_SRC_FILE
+};
+
+extern struct ssb_header *ssb_payload;
+extern size_t ssb_payload_size;
+
+// int exec_ssb(int fd, const char **argv, const char **envp, struct handler_args *args);
+int exec_ssb(int src_type, uword_t src, const char **argv, const char **envp, struct handler_args *args);

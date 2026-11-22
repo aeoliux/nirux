@@ -30,11 +30,11 @@ _start:
 	mov $stack_top, %esp
 	mov %esp, %ebp
 
+	push %ebx
 	push %esp
 	call tss_init
 	add $0x4, %esp
 
-	push %ebx
 	push %eax
 	call _i386_init
 	add $0x8, %esp

@@ -10,6 +10,8 @@ SECTIONS {
         QUAD(0);
         /* entry */
         QUAD(_start);
+        /* size */
+        QUAD(_bin_siz)
         /* section count */
         BYTE(5);
 
@@ -34,9 +36,12 @@ SECTIONS {
     .data ALIGN(4K) : AT(LOADADDR(.rodata) + SIZEOF(.rodata)) {
         _data_start = .; *(.data*) _data_end = .;
     }
+
     .bss ALIGN(4K) (NOLOAD) : {
         _bss_start = .; *(.bss* COMMON) _bss_end = .;
     }
+
+    _bin_siz = SIZEOF(.header) + (_text_end - _text_start) + (_rodata_end - _rodata_start) + (_data_end - _data_start);
 
     /DISCARD/ : {
         *(.note*)

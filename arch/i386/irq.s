@@ -78,8 +78,6 @@ ISR_NOERR 0x2F
 
 .global common_isr_handler
 common_isr_handler:
-    cli
-
     # save general registers
     pusha
 
@@ -110,6 +108,7 @@ common_isr_handler:
     # restore general registers
     popa
     add $8, %esp
+    sti
     iret
 
 .global exit
@@ -119,3 +118,14 @@ exit:
     int $0x80
     sub $4, %esp
     ret
+
+.global idisable
+idisable:
+    cli
+    ret
+
+.global ienable
+ienable:
+    sti
+    ret
+    

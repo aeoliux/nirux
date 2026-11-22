@@ -51,6 +51,7 @@ void task_exit(struct task *t, uint16_t state, uint64_t substate) {
     t->state = state;
     t->substate = substate;
 
+    ienable();
     for (;;) suspend();
 }
 
@@ -73,6 +74,9 @@ void task_schedule(struct handler_args *args) {
 
     struct task *prev = current_task;
     current_task = find_next_alive();
+
+    if (current_task == prev)
+        return;
 
     arch_task_update_kstack(current_task->kstack + (STACKSIZ * meminfo.pagesize));
 

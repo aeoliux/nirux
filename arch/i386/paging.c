@@ -1,5 +1,6 @@
 #include <kmem.h>
 #include <panic.h>
+#include <stdio.h>
 #include <string.h>
 #include <task.h>
 #include <i8259.h>
@@ -79,6 +80,8 @@ uword_t arch_setup_pages(struct task_section *sections, size_t count) {
     uword_t offset = 0x80000000;
     for (size_t i = 0; i < count; i++) {
         struct task_section *s = &sections[i];
+
+        s->vaddr = (void *) offset;
         uint16_t flags = s->rw ? 0x7 : 0x5;
 
         for (size_t j = 0; j < s->n; j++) {

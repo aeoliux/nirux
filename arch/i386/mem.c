@@ -19,16 +19,18 @@ int initialise_mem_by_multiboot(multiboot_info_t *info) {
     }
 
     meminfo.total = total;
-
+    meminfo.reserved = 0;
     // Initialise allocators bitmap (default pagesize 4K)
     initialise_map(&KERNEL_END, 4096);
 
     // Lock region for IVT and bios data
     // It is recommended to disable first page no matter the architecture
     lock_region(0x0, 0x1000);
+    meminfo.reserved += 0x1000;
 
     // Lock BIOS
     lock_region(0x9c680, 0x100000 - 0x9c680);
+    meminfo.reserved += 0x100000 - 0x9c680;
 
     // Lock all regions marked as unavailable
     for (uword_t i = 0; i < info->mmap_length; i += sizeof(multiboot_memory_map_t)) {
@@ -45,7 +47,6 @@ int initialise_mem_by_multiboot(multiboot_info_t *info) {
     lock_region((uword_t) &KERNEL_START, (&KERNEL_END - &KERNEL_START) + meminfo.bitmapsize);
 
     meminfo.used = count_used_memory();
-    meminfo.reserved = meminfo.used;
 
     return 0;
 }
