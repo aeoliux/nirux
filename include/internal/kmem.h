@@ -30,5 +30,6 @@ uword_t count_used_pages();
 uword_t count_used_memory();
 
 void *kalloc(uword_t n);
+void *kclone(void *pageptr, size_t n);
 void kfree(void *pageptr);
 void kfreen(void *pageptr, size_t n);

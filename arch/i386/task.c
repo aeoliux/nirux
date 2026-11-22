@@ -40,6 +40,13 @@ void arch_task_init_stack(struct task *t, uword_t entry, size_t envsize) {
     t->sp = (uword_t) r;
 }
 
+void arch_task_prepare_copied_stack(struct task *t, uword_t pid) {
+    struct regs *r = (struct regs *)(t->kstack + (STACKSIZ * meminfo.pagesize) - sizeof(struct regs));
+    r->eax = pid;
+
+    t->sp = (uword_t) r;
+}
+
 void arch_task_update_kstack(uword_t ksp) {
     tss.esp0 = ksp;
 }

@@ -90,7 +90,7 @@ void kmain() {
 
     printf("// Nirux %s %s\n", UNAME_M, UNAME_R);
     printf("// %d KB total memory\n", (meminfo.total - meminfo.reserved) / 1024);
-    printf("// %d KB used + reserved memory\n", (meminfo.used - meminfo.reserved) / 1024);
+    printf("// %d KB used\n", (meminfo.used - meminfo.reserved) / 1024);
 
     uint16_t seek = 0;
     struct nirux_device_info dev = {{0}, {0}, 0, 0};

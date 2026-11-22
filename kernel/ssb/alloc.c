@@ -29,7 +29,7 @@ int exec_ssb(int src_type, uword_t src, const char **argv, const char **envp, st
 
     int fd = -1;
     int result;
-    uint8_t *buffer;
+    uint8_t *buffer = NULL;
     switch (src_type) {
         case SSB_SRC_FILE:
             fd = (int) src;

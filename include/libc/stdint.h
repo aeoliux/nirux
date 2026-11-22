@@ -20,3 +20,4 @@ typedef int32_t off_t;
 typedef int64_t off64_t;
 typedef uword_t size_t;
 typedef word_t ssize_t;
+typedef int32_t pid_t;

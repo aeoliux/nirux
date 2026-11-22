@@ -50,7 +50,13 @@ struct task_section {
     uword_t ptr; // PAGE ALIGNED
 } __attribute__((__packed__));
 
+#define MAXFDS ((4096 - 109 - (7 * sizeof(uword_t))) / (int) sizeof(uint64_t) / 2)
+
 struct task {
+    pid_t pid;
+    pid_t parent;
+    uint16_t childs_count;
+
     uint16_t state;
     uint64_t substate;
 
@@ -68,16 +74,18 @@ struct task {
 
     struct task_section sections[SECTION_COUNT];
 
-    struct task *next;
+    uint64_t fds[MAXFDS * 2];
+    pid_t childs[];
+} __attribute__((__aligned__(8192)));
 
-    uint64_t fds[];
-} __attribute__((__aligned__(4096)));
-
-#define MAXFDS ((4096 - 136) / (int) sizeof(uint64_t) / 2)
+#define MAX_CHILDS ((8192 - 109 - (7 * sizeof(uword_t)) - (MAXFDS * 2 * sizeof(uint64_t))) / sizeof(pid_t))
 
 extern struct task ktask;
 extern struct task *current_task;
 extern struct task *last_task;
+extern struct task **pidtab;
+extern size_t max_pids;
+extern pid_t last_pid;
 
 int tasking_init();
 struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz);
@@ -86,7 +94,11 @@ void task_msleep(struct task *t, uword_t ms);
 void task_release_mem(struct task *t);
 void task_exit(struct task *t, uint16_t state, uint64_t substate);
 
+pid_t task_clone(struct task *t);
 int task_switch(struct handler_args *args, uword_t entry, size_t envsize);
+
+void pidtable_init();
+pid_t pidtable_register(struct task *t);
 
 // ARCH DEPENDENT
 
@@ -95,6 +107,7 @@ void arch_task_update_kstack(uword_t ksp);
 void arch_pagedir_set(uword_t pagedir);
 uword_t arch_setup_pages(struct task_section *sections, size_t count);
 void arch_task_init_stack(struct task *t, uword_t entry, size_t envsize);
+void arch_task_prepare_copied_stack(struct task *t, uword_t pid);
 uword_t arch_regs_get_sp(struct regs *r);
 void arch_regs_set_sp(struct regs *r, uword_t sp);
 void arch_free_pages(uword_t pd);

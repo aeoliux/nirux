@@ -1,3 +1,5 @@
+#include <device.h>
+#include <sys/mount.h>
 #include <kmem.h>
 #include <fs.h>
 #include <fcntl.h>
@@ -104,7 +106,7 @@ int open_at_task(struct task *t, const char *path, int flags, uint32_t mode) {
 int open(const char *path, int flags, ...) {
     uint32_t *mode = (uint32_t *) ((uint8_t *) &flags + sizeof(int));
 
-    return open_at_task(current_task, path, flags, flags & 0x8 ? *mode: 0);
+    return open_at_task(current_task, path, flags, flags & 0x8 ? *mode : 0);
 }
 
 off_t lseek(int fd, off_t offset, int whence) {
@@ -156,6 +158,34 @@ ssize_t write(int fd, const void *buf, size_t n) {
 
     ssize_t result = f->mnt->driver->write(f->mnt->device, &f->ref, buf, seek, n);
     if (result > 0) *seek_ptr = seek + (uint64_t) result;
+
+    return result;
+}
+
+int fmount(int fd, const char *target, const char *fstype, unsigned long mountflags, const void *fsflags) {
+    struct file_descriptor *f = extract_fd(current_task, fd);
+    if (!f) return -EBADF;
+
+    if (f->mnt->driver != &fs_devfs)
+        return -EBADF;
+
+    if (((f->flags & O_WRONLY) && (mountflags & MS_RDONLY)) || !(f->flags & O_RDONLY))
+        return -EBADF;
+
+    struct fs_driver *drv = fs_get_driver(fstype);
+    if (!drv)
+        return -EINVAL;
+
+    return fs_mount((uint16_t) f->ref.ref, target, drv);
+}
+
+int mount(const char *dev, const char *target, const char *fstype, unsigned long mountflags, const void *fsflags) {
+    int fd = open(dev, (mountflags & MS_RDONLY) ? O_RDONLY : O_RDWR);
+    if (fd < 0)
+        return fd;
+
+    int result = fmount(fd, target, fstype, mountflags, fsflags);
+    close(fd);
 
     return result;
 }

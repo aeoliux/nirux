@@ -10,6 +10,8 @@ enum SEEK_WHENCE {
     SEEK_END
 };
 
+pid_t fork();
+
 void exit(int code);
 off_t lseek(int fd, off_t offset, int whence);
 ssize_t read(int fd, void *restrict buf, size_t n);

@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <uname.h>
+#include <kmem.h>
 
 #if defined (__i386__)
 struct regs {
@@ -32,6 +33,7 @@ void panic(const char *fmt, uint32_t *eip, ...) {
     #endif
 
     uint8_t *arg = (uint8_t *)&eip + (uword_t) sizeof(eip);
+    printf("mem available - %u, mem used - %u\n", meminfo.total - meminfo.reserved, meminfo.used - meminfo.reserved);
     printf("!%s-%s: ", UNAME_M, UNAME_R);
     vprintf(fmt, arg);
     putchar('\n');

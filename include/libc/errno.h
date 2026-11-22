@@ -6,6 +6,7 @@
 #define ENXIO 6
 #define ENOEXEC 8
 #define EBADF 9
+#define EAGAIN 11
 #define ENOMEM 12
 #define EFAULT 14
 #define ENOTDIR 20

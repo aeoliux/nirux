@@ -8,12 +8,14 @@
 #include <panic.h>
 
 static inline struct task *find_next_alive() {
+    static pid_t current_pid = 0;
     uword_t *ip = __builtin_return_address(0);
 
-    struct task *ptr = current_task->next ? current_task->next : &ktask;
-    struct task *startedWith = current_task;
+    struct task *ptr = pidtab[current_pid];
+    // struct task *startedWith = current_task;
 
-    for (; ptr != startedWith; ptr = ptr->next ? ptr->next : &ktask) {
+    for (;; ptr = pidtab[current_pid] ? pidtab[current_pid] : &ktask) {
+        current_pid = (current_pid + 1) % (last_pid + 2);
         switch (ptr->state) {
             case TASK_RUNNING: return ptr;
             case TASK_SLEEP:
@@ -45,14 +47,21 @@ void task_exit(struct task *t, uint16_t state, uint64_t substate) {
     if (!t || t == &ktask)
         return;
 
+    // TODO! DIFFERENT HANDLING FOR TASK_KILLED
+
     if (state == TASK_FAULT)
         printf("// FAULT: %x\n", (uword_t) substate);
 
     t->state = state;
     t->substate = substate;
 
+    for (size_t i = 0; i < MAX_CHILDS; i++)
+        if (t->childs[i])
+            if (pidtab[t->childs[i]]->parent == t->pid)
+                task_exit(pidtab[t->childs[i]], TASK_KILLED, 1);
+
     ienable();
-    for (;;) suspend();
+    if (current_task == t) for (;;) suspend();
 }
 
 void task_release_mem(struct task *t) {

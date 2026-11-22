@@ -10,7 +10,14 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    int pid = syscall(2);
+    if (pid == 2) {
+        puts("init: cloned (pid = 2)!\n");
+        return 0;
+    }
+
     puts("init: /dev/fdblk0 = / (success)\n");
+    while (1) {}
 
     return 0;
 }

@@ -1,4 +1,5 @@
 #include <kmem.h>
+#include <string.h>
 
 uword_t find_first_free_pages(uword_t at, uword_t n) {
     uword_t max_start = meminfo.pagescount - n;
@@ -42,6 +43,18 @@ void *kalloc(uword_t n) {
     return (void *) next_possible_page_addr;
 }
 
+void *kclone(void *pageptr, size_t n) {
+    if ((uword_t) pageptr % meminfo.pagesize)
+        return NULL;
+
+    void *ptr = kalloc(n);
+    if (!ptr) return NULL;
+
+    memcpy(ptr, pageptr, n * meminfo.pagesize);
+
+    return ptr;
+}
+
 void kfreen(void *pageptr, size_t n) {
     for (size_t i = 0; i < n; i++)
         kfree(pageptr + (i * meminfo.pagesize));
@@ -49,6 +62,9 @@ void kfreen(void *pageptr, size_t n) {
 
 void kfree(void *pageptr) {
     // uword_t eip = (uword_t) __builtin_return_address(0);
+
+    if (!pageptr)
+        return;
 
     if ((uword_t) pageptr % meminfo.pagesize) {
         __asm__ volatile ("hlt");

@@ -9,10 +9,16 @@
 #include <task.h>
 #include <kmem.h>
 #include <unistd.h>
+#include <sys/mount.h>
 
 static inline void check_mem_perm(struct task *t, uword_t addr) {
     if (addr < 0x80000000 || addr > 0x80000000 + (t->occupied * meminfo.pagesize))
         task_exit(t, TASK_FAULT, 0);
+}
+
+static inline void only_root(struct task *t) {
+    if ((t->user & 0xffff) && (t->user != (uint32_t) ~0))
+        task_exit(t, TASK_FAULT, 0xffff);
 }
 
 uword_t syscall(struct handler_args *args) {
@@ -21,9 +27,10 @@ uword_t syscall(struct handler_args *args) {
 
     switch (args->arg0) {
         case SYS_EXIT:
-            printf("Exit code: %d\n", (int) args->arg1);
             task_exit(args->caller, TASK_EXITED, (uint64_t) args->arg1);
             break;
+        case SYS_FORK:
+            return (uword_t) fork();
         case SYS_READ:
             check_mem_perm(t, args->arg2);
             return (uword_t) read((int) args->arg1, (void *) args->arg2, (size_t) args->arg3);
@@ -41,11 +48,21 @@ uword_t syscall(struct handler_args *args) {
         case SYS_LSEEK:
             return (uword_t) lseek((int) args->arg1, (off_t) args->arg2, (int) args->arg3);
 
+        case SYS_MOUNT:
+            return (uword_t) mount((char *) args->arg1, (char *) args->arg2, (char *) args->arg3, (unsigned long) args->arg4, (void *) args->arg5);
+
         case SYS_DUP:
             return (uword_t) dup((int) args->arg1);
+
+        // NIRUX EXCLUSIVE
+
+        case SYS_FMOUNT:
+            return (uword_t) fmount((int) args->arg1, (char *) args->arg2, (char *) args->arg3, (unsigned long) args->arg4, (void *) args->arg5);
+        
         // SPECIAL CALLS
 
         case SYS_DMNTRT:
+            only_root(t);
             check_mem_perm(t, args->arg2);
             fsdrv = fs_get_driver((void *) args->arg2);
 
@@ -53,9 +70,7 @@ uword_t syscall(struct handler_args *args) {
         case SYS_DREAD:
         case SYS_DWRITE:
         case SYS_DIOCTL:
-            if (!t->is_kthread && t->user)
-                return -EPERM;
-
+            only_root(t);
             check_mem_perm(t, args->arg3);
 
             size_t seek = args->arg2;
