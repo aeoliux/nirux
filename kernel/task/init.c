@@ -69,6 +69,7 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
     t->ustack = ustack;
     t->ustacksiz = is_kthread ? 0 : ustacksiz;
     t->user = flags;
+    t->euser = flags;
 
     if ((is_kthread && current_task->is_kthread) || (!is_kthread && !current_task->is_kthread)) {
         memcpy(t->fds, current_task->fds, MAXFDS);
@@ -117,6 +118,14 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz) {
         return NULL;
     }
 
+    if (!current_task->is_kthread && !is_kthread) {
+        t->pgid = current_task->pgid;
+        t->sid = current_task->sid;
+    } else if (!is_kthread) {
+        t->pgid = t->pid;
+        t->sid = t->sid;
+    }
+
     return t;
 }
 
@@ -128,9 +137,11 @@ pid_t task_clone(struct task *t) {
     struct task *new = kclone(t, 2);
     if (!new)
         return -ENOMEM;
-    memset(((void *) new) + meminfo.pagesize, 0, meminfo.pagesize);
-    new->pagedir = 0;
+    memset(new->childs, 0, new->childs_count * sizeof(pid_t));
+    new->childs_count = 0;
+    new->sig_pending = 0;
     new->state = 0;
+    new->pagedir = 0;
     
     uword_t ustack = (uword_t) kclone((void *) t->ustack, t->ustacksiz);
     if (!ustack) { kfree(new); return -ENOMEM; }
@@ -143,11 +154,13 @@ pid_t task_clone(struct task *t) {
     new->ustack = ustack;
 
     for (size_t i = 0; i < t->occupied; i++) {
-        new->sections[i].ptr = (uword_t) kclone((void *) t->sections[i].ptr, t->sections[i].n);
-        if (!new->sections[i].ptr)
-            goto error;
-
-        new->sections[i].vaddr = 0;
+        if (new->sections[i].stack) {
+            new->sections[i].ptr = ustack;
+        } else {
+            new->sections[i].ptr = (uword_t) kclone((void *) t->sections[i].ptr, t->sections[i].n);
+            if (!new->sections[i].ptr)
+                goto error;
+        }
         sectioned++;
     }
 
@@ -155,11 +168,11 @@ pid_t task_clone(struct task *t) {
     if (!new->pagedir)
         goto error;
 
+    arch_task_prepare_copied_stack(new, (uword_t) 0);
+
     pid_t pid = pidtable_register(new);
     if (pid < 0)
         goto error;
-
-    arch_task_prepare_copied_stack(new, (uword_t) pid);
 
     new->state = t->state;
 

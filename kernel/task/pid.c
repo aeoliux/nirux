@@ -52,6 +52,10 @@ pid_t pidtable_register(struct task *t) {
     return t->pid;
 }
 
+struct task *pidtable_task(pid_t pid) {
+    return (last_pid >= pid) ? pidtab[pid] : NULL;
+}
+
 pid_t waitpid(pid_t pid, int *wstatus, int options) {
 
 }
@@ -66,5 +70,5 @@ pid_t fork() {
 
     current_task->childs[current_task->childs_count++] = ret;
 
-    return 0;
+    return ret;
 }

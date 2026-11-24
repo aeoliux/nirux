@@ -5,6 +5,7 @@
 #include <panic.h>
 #include <stdio.h>
 #include <task.h>
+#include <signal.h>
 
 void idt_set_gate(uint8_t n, uint32_t addr, uint8_t flags) {
     __asm__ volatile ("cli");
@@ -28,10 +29,10 @@ struct regs *i386_interrupt_handler(struct regs *r) {
     if (ihandler->handler) {
         uword_t result = ihandler->handler(&args);
         if (ihandler->does_return)
-            r->eax = result;
+            ((struct regs *) args.stack)->eax = result;
     }
 
-    if (r->int_no >= 32 && r->int_no <= 47) {
+    if (r->int_no >= 33 && r->int_no <= 47) {
         i8259_eoi(r->int_no - 0x20);
     }
 
@@ -39,10 +40,31 @@ struct regs *i386_interrupt_handler(struct regs *r) {
 }
 
 uword_t i386_cpu_exception(struct handler_args *args) {
-    printf("// Exception No. %x (err_code = %x, eip = %x, eax = %x)\n", args->int_no, args->err_code, args->return_address, args->arg0);
+    // printf("// Exception No. %x (err_code = %x, eip = %x, eax = %x)\n", args->int_no, args->err_code, args->return_address, args->arg0);
 
-    task_exit(args->caller, TASK_FAULT, (uint64_t) ((uint64_t) args->int_no << 32 | args->err_code));
-    return 0;
+    switch (args->int_no) {
+        case 0:
+        case 4:
+        case 6: task_sig_send_self(SIGILL); break;
+
+        case 1:
+        case 3: task_sig_send_self(SIGTRAP); break;
+
+        case 2: panic("memory parity error", (void *) args->return_address); break;
+
+        case 7:
+        case 16:
+        case 19: task_sig_send_self(SIGFPE); break;
+
+        case 10:
+        case 12: task_sig_send_self(SIGSTKFLT); break;
+
+        case 13:
+        case 14: task_sig_send_self(SIGSEGV); break;
+    }
+
+    panic("unknown cpu exception or caught on kernel task: %u", (void *) args->return_address, args->int_no);
+    return 0; // why :(((
 }
 
 uword_t double_fault(struct handler_args *args) {

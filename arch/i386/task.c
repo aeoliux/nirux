@@ -42,7 +42,7 @@ void arch_task_init_stack(struct task *t, uword_t entry, size_t envsize) {
 
 void arch_task_prepare_copied_stack(struct task *t, uword_t pid) {
     struct regs *r = (struct regs *)(t->kstack + (STACKSIZ * meminfo.pagesize) - sizeof(struct regs));
-    r->eax = pid;
+    r->eax = 0;
 
     t->sp = (uword_t) r;
 }

@@ -96,7 +96,7 @@ uword_t arch_setup_pages(struct task_section *sections, size_t count) {
                 }
 
                 memset(new, 0, 4096);
-                pagedir[dir_off] = pagedir[dir_off] | 0x7;
+                pagedir[dir_off] = ((uword_t) new) | 0x7;
             }
 
             uint32_t *ptr = (uint32_t *)(pagedir[dir_off] & ~0xfff);

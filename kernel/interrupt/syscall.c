@@ -10,15 +10,16 @@
 #include <kmem.h>
 #include <unistd.h>
 #include <sys/mount.h>
+#include <signal.h>
 
 static inline void check_mem_perm(struct task *t, uword_t addr) {
     if (addr < 0x80000000 || addr > 0x80000000 + (t->occupied * meminfo.pagesize))
-        task_exit(t, TASK_FAULT, 0);
+        task_sig_send_self(SIGSEGV);
 }
 
 static inline void only_root(struct task *t) {
     if ((t->user & 0xffff) && (t->user != (uint32_t) ~0))
-        task_exit(t, TASK_FAULT, 0xffff);
+        task_sig_send_self(SIGSYS);
 }
 
 uword_t syscall(struct handler_args *args) {
@@ -38,18 +39,29 @@ uword_t syscall(struct handler_args *args) {
             check_mem_perm(t, args->arg2);
             return (uword_t) write((int) args->arg1, (void *) args->arg2, (size_t) args->arg3);
         case SYS_OPEN:
+            check_mem_perm(t, args->arg1);
             return (uword_t) open((void *) args->arg1, (int) args->arg2, (uint32_t) args->arg3);
         case SYS_CLOSE:
             return (uword_t) close((int) args->arg1);
 
         case SYS_EXECVE:
+            check_mem_perm(t, args->arg1);
+            check_mem_perm(t, args->arg2);
+            check_mem_perm(t, args->arg3);
             return (uword_t) execve((char *) args->arg1, (char *const *) args->arg2, (char *const *) args->arg3, args);
 
         case SYS_LSEEK:
             return (uword_t) lseek((int) args->arg1, (off_t) args->arg2, (int) args->arg3);
 
         case SYS_MOUNT:
+            check_mem_perm(t, args->arg1);
+            check_mem_perm(t, args->arg2);
+            check_mem_perm(t, args->arg3);
+            check_mem_perm(t, args->arg5);
             return (uword_t) mount((char *) args->arg1, (char *) args->arg2, (char *) args->arg3, (unsigned long) args->arg4, (void *) args->arg5);
+
+        case SYS_KILL:
+            return (uword_t) kill((pid_t) args->arg1, (int) args->arg2);
 
         case SYS_DUP:
             return (uword_t) dup((int) args->arg1);
@@ -57,6 +69,9 @@ uword_t syscall(struct handler_args *args) {
         // NIRUX EXCLUSIVE
 
         case SYS_FMOUNT:
+            check_mem_perm(t, args->arg2);
+            check_mem_perm(t, args->arg3);
+            check_mem_perm(t, args->arg5);
             return (uword_t) fmount((int) args->arg1, (char *) args->arg2, (char *) args->arg3, (unsigned long) args->arg4, (void *) args->arg5);
         
         // SPECIAL CALLS

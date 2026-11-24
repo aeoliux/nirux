@@ -1,3 +1,4 @@
+#include <signal.h>
 #include <ioport.h>
 #include <kmem.h>
 #include <irq.h>
@@ -8,14 +9,12 @@
 #include <panic.h>
 
 static inline struct task *find_next_alive() {
-    static pid_t current_pid = 0;
     uword_t *ip = __builtin_return_address(0);
 
-    struct task *ptr = pidtab[current_pid];
-    // struct task *startedWith = current_task;
+    struct task *startedWith = current_task, *ptr = current_task;
+    for (pid_t pid = (startedWith->pid + 1) % (last_pid + 1); pid != startedWith->pid; pid = (pid + 1) % (last_pid + 1)) {
+        ptr = pidtable_task(pid);
 
-    for (;; ptr = pidtab[current_pid] ? pidtab[current_pid] : &ktask) {
-        current_pid = (current_pid + 1) % (last_pid + 2);
         switch (ptr->state) {
             case TASK_RUNNING: return ptr;
             case TASK_SLEEP:
@@ -47,18 +46,35 @@ void task_exit(struct task *t, uint16_t state, uint64_t substate) {
     if (!t || t == &ktask)
         return;
 
-    // TODO! DIFFERENT HANDLING FOR TASK_KILLED
-
     if (state == TASK_FAULT)
         printf("// FAULT: %x\n", (uword_t) substate);
 
     t->state = state;
     t->substate = substate;
 
-    for (size_t i = 0; i < MAX_CHILDS; i++)
-        if (t->childs[i])
-            if (pidtab[t->childs[i]]->parent == t->pid)
-                task_exit(pidtab[t->childs[i]], TASK_KILLED, 1);
+    if (t->sid == t->pid) {
+        for (pid_t cpid = 2; cpid < last_pid + 1; cpid++) {
+            struct task *c = pidtable_task(cpid);
+            if (c && c->sid == t->sid)
+                kill(cpid, SIGHUP);
+        }
+    }
+
+    // WARN! THIS BELOW IS NOT POSIX
+    if (t->pgid == t->pid) {
+        for (pid_t cpid = 2; cpid < last_pid + 1; cpid++) {
+            struct task *c = pidtable_task(cpid);
+            if (c && c->pgid == t->pid)
+                c->pgid = 1;
+        }
+    }
+
+    for (size_t i = 0; i < t->childs_count; i++) {
+        pid_t cpid = t->childs[i];
+        struct task *c = pidtable_task(cpid);
+        if (c && c->parent == t->pid)
+            c->parent = 1;
+    }
 
     ienable();
     if (current_task == t) for (;;) suspend();
@@ -86,6 +102,8 @@ void task_schedule(struct handler_args *args) {
 
     if (current_task == prev)
         return;
+
+    task_sig_dispatch(current_task);
 
     arch_task_update_kstack(current_task->kstack + (STACKSIZ * meminfo.pagesize));
 

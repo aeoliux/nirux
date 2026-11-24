@@ -15,6 +15,8 @@
 #define SYS_MOUNT       21
 #define SYS_UMOUNT      22
 
+#define SYS_KILL        37
+
 #define SYS_DUP         41
 
 #define SYS_GETEUID     49

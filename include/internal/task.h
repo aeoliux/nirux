@@ -3,6 +3,7 @@
 #include <fs.h>
 #include <regs.h>
 #include <irq.h>
+#include <signal.h>
 
 #define STACKSIZ 2
 
@@ -50,11 +51,13 @@ struct task_section {
     uword_t ptr; // PAGE ALIGNED
 } __attribute__((__packed__));
 
-#define MAXFDS ((4096 - 109 - (7 * sizeof(uword_t))) / (int) sizeof(uint64_t) / 2)
+#define MAXFDS ((4096 - 121 - (7 * sizeof(uword_t))) / (int) sizeof(uint64_t) / 2)
+#define MAX_CHILDS ((8192 - 125 - (38 * sizeof(uword_t)) - (MAXFDS * 2 * sizeof(uint64_t))) / sizeof(pid_t))
 
 struct task {
     pid_t pid;
     pid_t parent;
+    pid_t sid, pgid;
     uint16_t childs_count;
 
     uint16_t state;
@@ -70,15 +73,17 @@ struct task {
     uword_t sp;
     uword_t occupied;
 
-    uint32_t user;
+    uint32_t user, euser;
 
     struct task_section sections[SECTION_COUNT];
 
     uint64_t fds[MAXFDS * 2];
-    pid_t childs[];
-} __attribute__((__aligned__(8192)));
 
-#define MAX_CHILDS ((8192 - 109 - (7 * sizeof(uword_t)) - (MAXFDS * 2 * sizeof(uint64_t))) / sizeof(pid_t))
+    uint32_t sig_pending;
+    sighandler_t sig_handlers[SIGCOUNT];
+
+    pid_t childs[MAX_CHILDS];
+} __attribute__((__aligned__(8192)));
 
 extern struct task ktask;
 extern struct task *current_task;
@@ -92,13 +97,19 @@ struct task *task_create(uword_t flags, uword_t entry, uword_t ustacksiz);
 void task_schedule(struct handler_args *args);
 void task_msleep(struct task *t, uword_t ms);
 void task_release_mem(struct task *t);
+void task_sig_default(struct task *t, int sig);
+void task_sig_dispatch(struct task *t);
 void task_exit(struct task *t, uint16_t state, uint64_t substate);
 
 pid_t task_clone(struct task *t);
 int task_switch(struct handler_args *args, uword_t entry, size_t envsize);
 
+int task_sig_send(struct task *t, int sig);
+int task_sig_send_self(int sig);
+
 void pidtable_init();
 pid_t pidtable_register(struct task *t);
+struct task *pidtable_task(pid_t pid);
 
 // ARCH DEPENDENT
 
