@@ -4,6 +4,7 @@
 #include <irq.h>
 #include <regs.h>
 #include <stdio.h>
+#include <string.h>
 #include <task.h>
 #include <timer.h>
 #include <panic.h>
@@ -52,6 +53,8 @@ void task_exit(struct task *t, uint16_t state, uint64_t substate) {
     t->state = state;
     t->substate = substate;
 
+    kill(t->parent, SIGCHLD);
+
     if (t->sid == t->pid) {
         for (pid_t cpid = 2; cpid < last_pid + 1; cpid++) {
             struct task *c = pidtable_task(cpid);
@@ -84,12 +87,16 @@ void task_release_mem(struct task *t) {
     if (!t || t == &ktask)
         return;
 
-    for (size_t i = 0; i < SECTION_COUNT; i++)
+    for (size_t i = 0; i < t->occupied; i++)
         if (t->sections[i].ptr && t->sections[i].n)
             kfreen((void *) t->sections[i].ptr, t->sections[i].n);
 
-    if (!t->is_kthread && t->pagedir)
+    memset(t->sections, 0, sizeof(t->sections));
+
+    if (!t->is_kthread && t->pagedir) {
         arch_free_pages(t->pagedir);
+        t->pagedir = 0;
+    }
 
     kfreen((void *) t->kstack, STACKSIZ);
 }

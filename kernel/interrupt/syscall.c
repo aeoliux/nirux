@@ -11,6 +11,7 @@
 #include <unistd.h>
 #include <sys/mount.h>
 #include <signal.h>
+#include <sys/wait.h>
 
 static inline void check_mem_perm(struct task *t, uword_t addr) {
     if (addr < 0x80000000 || addr > 0x80000000 + (t->occupied * meminfo.pagesize))
@@ -43,6 +44,9 @@ uword_t syscall(struct handler_args *args) {
             return (uword_t) open((void *) args->arg1, (int) args->arg2, (uint32_t) args->arg3);
         case SYS_CLOSE:
             return (uword_t) close((int) args->arg1);
+        case SYS_WAITPID:
+            check_mem_perm(t, args->arg2);
+            return (uword_t) waitpid((pid_t) args->arg1, (int *) args->arg2, (int) args->arg3);
 
         case SYS_EXECVE:
             check_mem_perm(t, args->arg1);

@@ -59,6 +59,8 @@ void task_sig_default(struct task *t, int sig) {
         case SIGCONT:
             t->state = TASK_RUNNING;
             return;
+
+        default: return;
     }
 
     abort:

@@ -18,17 +18,22 @@ int main(int argc, char **argv) {
 
         for (int i = 0; i < 500000; i++);
 
-        puts("init: cloned (pid = 2)!\n");
+        puts("init: cloned exiting with code 100!\n");
 
-        // syscall(1, 0);
-        while (1) {}
+        syscall(1, 100);
     }
 
     if (pid == 2) puts("init: child spawned, pid = 2\n");
 
     for (int i = 0; i < 2000000; i++);
 
-    if (!syscall(37, pid, 1)) puts("init: forked process killed\n");
+    int wstatus;
+    if (syscall(7, pid, &wstatus, 0) >= 0) {
+        i32toa(buf, wstatus & 0xff, 10, 0);
+        puts("init: child exited with code = ");
+        puts(buf);
+        puts("\n");
+    }
 
     puts("init: /dev/fdblk0 = / (success)\n");
 
