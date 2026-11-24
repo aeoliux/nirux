@@ -30,7 +30,12 @@ void pidtable_init() {
 }
 
 pid_t pidtable_register(struct task *t) {
-    int critical_search = 0;
+    int critical_search = 0, nextpid_is_init = 0;
+
+    if (t->is_kthread && nextpid == 1) {
+        nextpid_is_init = 1;
+        nextpid++;
+    }
 
     if (nextpid >= max_pids) {
         nextpid = 2;
@@ -47,6 +52,8 @@ pid_t pidtable_register(struct task *t) {
 
     t->pid = nextpid;
     pidtab[nextpid++] = t;
+
+    if (nextpid_is_init) nextpid = 1;
 
     if (last_pid < t->pid)
         last_pid = t->pid;

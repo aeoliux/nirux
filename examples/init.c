@@ -14,7 +14,7 @@ int main(int argc, char **argv) {
 
     int pid = syscall(2);
     if (!pid) {
-        puts("init: cloned (pid = 2)!\n");
+        puts("init: cloned (pid = 3)!\n");
 
         for (int i = 0; i < 500000; i++);
 
@@ -23,7 +23,7 @@ int main(int argc, char **argv) {
         syscall(1, 100);
     }
 
-    if (pid == 2) puts("init: child spawned, pid = 2\n");
+    if (pid == 3) puts("init: child spawned, pid = 3\n");
 
     for (int i = 0; i < 2000000; i++);
 

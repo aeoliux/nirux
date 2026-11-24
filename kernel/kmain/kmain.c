@@ -18,6 +18,7 @@
 #include <fs/fat.h>
 #include <task.h>
 #include <ssb.h>
+#include <ata.h>
 
 // static inline void msleep(size_t ms) {
 //     size_t target = timer_elapsed + ms;
@@ -98,6 +99,8 @@ void kmain() {
     while (dinfo(&seek, &dev) != -1) {
         printf("//      %s: /dev/%s (%u:%u)\n", dev.driver, dev.name, (uint32_t) dev.major, (uint32_t) dev.minor);
     }
+
+    block_isaata.probe();
 
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 

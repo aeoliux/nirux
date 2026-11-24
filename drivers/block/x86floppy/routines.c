@@ -6,6 +6,7 @@
 #include <x86floppy.h>
 #include <ioport.h>
 #include <timer.h>
+#include <task.h>
 
 static inline int x86floppy_can_command() {
     uint8_t msr = inb(X86FLOPPY_REG_MAIN_STATUS_REGISTER);
@@ -136,9 +137,12 @@ int x86floppy_select_drive(uint32_t drive) {
 }
 
 uint32_t x86floppy_current_drive = 0;
+uword_t x86floppy_last_use = 0;
 void x86floppy_set_motor(uint32_t drive_id, uint8_t state) {
-    if (x86floppy_current_drive == drive_id && state)
+    if (x86floppy_current_drive == drive_id && state) {
+        x86floppy_last_use = timer_elapsed;
         return;
+    }
 
     if (state)
         x86floppy_select_drive(drive_id);
@@ -153,9 +157,20 @@ void x86floppy_set_motor(uint32_t drive_id, uint8_t state) {
             x86floppy_set_motor(x86floppy_current_drive, 0);
 
         x86floppy_sleep(500);
+        x86floppy_last_use = timer_elapsed;
         x86floppy_current_drive = drive_id;
     } else {
         x86floppy_current_drive = 0;
+    }
+}
+
+int x86floppy_motor_supervisor() {
+    while (1) {
+        if (x86floppy_current_drive && timer_elapsed >= x86floppy_last_use + 6000) {
+            x86floppy_set_motor(x86floppy_current_drive, 0);
+        }
+
+        suspend();
     }
 }
 
@@ -215,6 +230,8 @@ int x86floppy_init(uint32_t *drives, size_t n) {
     // reset floppy controller
     int reset_result = x86floppy_reset();
     if (reset_result) return reset_result;
+
+    task_create(~0, (uword_t) x86floppy_motor_supervisor, 0)->state = TASK_RUNNING;
 
     // send VERSION command
     x86floppy_perform_command(X86FLOPPY_CMD_VERSION, X86FLOPPY_CMD_EOA);
@@ -324,6 +341,8 @@ int x86floppy_perform_dma(uint8_t is_write, uint8_t spt, uint8_t cylinder, uint8
 int x86floppy_perform_command(uint8_t command, ...) {
     uint16_t *arg = (uint16_t *) ((uint8_t *) &command) + 2;
 
+    x86floppy_last_use = timer_elapsed;
+
     x86floppy_irqed = 0;
 
     int timeout = 10000;
@@ -367,6 +386,8 @@ int x86floppy_perform_command(uint8_t command, ...) {
 
     if (!x86floppy_is_executing() && x86floppy_should_in_fifo())
         x86floppy_flush_buffer();
+
+    x86floppy_last_use = timer_elapsed;
 
     return 0;
 }

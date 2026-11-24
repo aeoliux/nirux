@@ -71,6 +71,8 @@ ssize_t x86floppy_probe(uint32_t *out, size_t limit) {
     return n;
 }
 
+int x86floppy_in_use = 0;
+
 ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *restrict buf, size_t n) {
     size_t done = 0;
 
@@ -79,6 +81,9 @@ ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *r
         case BLOCK_FLOPPY_WRITE: command = 1; break;
         default: return -EINVAL;
     }
+
+    while (x86floppy_in_use) suspend();
+    x86floppy_in_use = 1;
 
     x86floppy_set_motor(drive, 1);
 
@@ -96,7 +101,7 @@ ssize_t x86floppy_perform(uint32_t drive, uint8_t command, uint32_t lba, void *r
         done++;
     }
 
-    x86floppy_set_motor(drive, 0);
+    x86floppy_in_use = 0;
 
     return (ssize_t) done;
 }

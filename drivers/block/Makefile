@@ -5,4 +5,5 @@ KOBJ += \
 
 ifeq ($(ARCH), i386)
 include drivers/block/x86floppy/Makefile
+include drivers/block/isaata/Makefile
 endif
