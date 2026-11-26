@@ -117,9 +117,9 @@ void kmain() {
         if ((result = exec_ssb(SSB_SRC_MEM, (uword_t) ssb_payload, argv, NULL, NULL)) < 0)
             panic("payload execution failed, exec_ssb = %d", ret, result);
     } else if (floppy_ready) {
-        printf("// Attempting to mount /dev/isaata128p0 (FAT) as /\n");
-        if ((result = fs_mount_root(0x984, &fs_fat)))
-            panic("couldn't mount /dev/isaata128p0, fs_mount = %d", ret, result);
+        printf("// Attempting to mount /dev/isaata128p1 (FAT) as /\n");
+        if ((result = fs_mount_root(0x985, &fs_fat)))
+            panic("couldn't mount /dev/isaata128p1, fs_mount = %d", ret, result);
 
         list_dir_recursively("/", 0);
 

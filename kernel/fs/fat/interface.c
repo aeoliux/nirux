@@ -68,6 +68,8 @@ int fs_fat_initialise(uint16_t device) {
         block->device = device;
     } else {
         // FAT32 currently unsupported
+        printf("// fs_fat FAT32 unsupported\n");
+
         return fs_fat_kfree_if_empty(-ENOSUP);
     }
 

@@ -2,7 +2,7 @@
 *.o
 *.os
 nImage-*
-/compile_flags.txt
+/**/compile_flags.txt
 /.clangd
 /**/a.out
 *.ssb

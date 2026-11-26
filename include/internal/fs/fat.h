@@ -9,7 +9,8 @@ enum fs_fat_type {
     FS_FAT16            = 0x1,
     FS_12BIT            = 0x2,
     FS_FAT12            = FS_FAT16 | FS_12BIT,
-    FS_FAT32            = 0x4
+    FS_FAT32            = 0x4,
+    FS_UXFAT            = 0x8
 };
 
 struct fs_fat_superblock {
