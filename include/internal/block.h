@@ -5,7 +5,7 @@
 
 #define BLOCK_MODCTL_REGISTER 0x1
 #define BLOCK_MAX_FLOPPY_DRV 4
-#define BLOCK_MAX_DEV 16
+#define BLOCK_MAX_DEV 256
 
 extern struct nirux_interface_driver block_interface;
 
@@ -34,7 +34,7 @@ struct nirux_block_device {
     uint8_t removable;
 
     uint16_t sector_size;
-    uint64_t last_lba;
+    uint64_t total_lba;
 
     void *driver;
     void *reserved;
@@ -83,3 +83,22 @@ struct nirux_block_floppy_driver {
 };
 
 extern struct nirux_block_floppy_driver x86floppy_driver;
+
+struct mbr_entry {
+    uint8_t active;
+
+    uint8_t start_chs[3];
+    uint8_t ptype;
+    uint8_t end_chs[3];
+
+    uint32_t start_lba;
+    uint32_t total_sectors;
+} __attribute__((__packed__));
+
+struct mbr {
+    uint8_t bootcode[446];
+
+    struct mbr_entry part[4];
+
+    uint16_t magic;
+} __attribute__((__aligned__(512)));

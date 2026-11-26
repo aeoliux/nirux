@@ -36,8 +36,8 @@ struct fs_fat_superblock {
     uint32_t    hidden_sectors_count;
     uint32_t    sectors_count;
 
-    uint8_t     extended_superblock[476];
-    uint8_t     buffer[1536];
+    uint8_t     extended_superblock[472];
+    uint8_t     *buffer;
 } __attribute__((__packed__));
 
 struct fs_fat1x_extended_superblock {
@@ -48,7 +48,7 @@ struct fs_fat1x_extended_superblock {
     uint8_t     volume_label[11];
     uint8_t     system_id[8];
 
-    uint8_t     _pad[486 + 1536];
+    uint8_t     _pad[486];
 } __attribute__((__packed__));
 
 struct fs_fat_direntry {
@@ -110,13 +110,14 @@ int64_t fs_fat_cluster(
 int64_t fs_fat_seek_clusters(
     struct fs_fat_superblock *blk,
     size_t cluster,
-    size_t seek_to_byte
+    size_t seek_to_byte,
+    size_t *seeked_sector
 );
 
 int64_t fs_fat_read_cluster(
     struct fs_fat_superblock *blk,
     size_t cluster,
-    size_t seek_sectors
+    size_t sector_index
 );
 
 ssize_t fs_fat_read(

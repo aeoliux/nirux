@@ -3,14 +3,29 @@
 #include <device.h>
 #include <errno.h>
 
+static inline uint64_t seek_partition(struct nirux_block_device **blk) {
+    if ((*blk)->type & BLOCK_PARTITION) {
+        uint64_t seek = (uword_t) (*blk)->reserved;
+
+        struct nirux_block_device *real = &block_devices[(*blk)->addr % 256];
+        *blk = real;
+
+        return seek;
+    }
+
+    return 0;
+}
+
 uint8_t block_read_buffer[4096];;
 ssize_t block_read_bytes(struct nirux_block_device *blk, struct nirux_block_driver *drv, size_t seek, void *restrict buf, size_t n) {
-    size_t middle_sectors_start = (seek / blk->sector_size) + ((seek % blk->sector_size) > 0);
-    size_t middle_sectors_count = (n / blk->sector_size) - (((n + seek) % blk->sector_size) > 0);
-    size_t middle_sectors_limit = middle_sectors_start + middle_sectors_count;
+    uint64_t part_seek = seek_partition(&blk);
 
-    size_t left_remaining_bytes = (middle_sectors_start * blk->sector_size) - seek;
-    size_t rght_remaining_bytes = (seek + n) - (middle_sectors_limit * blk->sector_size);
+    uint64_t middle_sectors_start = (seek / blk->sector_size) + ((seek % blk->sector_size) > 0) + part_seek;
+    uint64_t middle_sectors_count = (n / blk->sector_size) - (((n + seek) % blk->sector_size) > 0);
+    uint64_t middle_sectors_limit = middle_sectors_start + middle_sectors_count;
+
+    uint64_t left_remaining_bytes = (middle_sectors_start * blk->sector_size) - seek;
+    uint64_t rght_remaining_bytes = (seek + n) - (middle_sectors_limit * blk->sector_size);
 
     ssize_t left_nread = 0;
     if (left_remaining_bytes) {
@@ -52,9 +67,10 @@ ssize_t block_read_block(struct nirux_block_device *blk, struct nirux_block_driv
     if ((n % blk->sector_size) && n > 4096)
         return -EINVAL;
 
+    uint64_t part_seek = seek_partition(&blk);
     void *dst = ((n % blk->sector_size || n < blk->sector_size)) ? block_read_buffer : buf;
 
-    ssize_t result = drv->read(blk, seek / blk->sector_size, dst, n / blk->sector_size);
+    ssize_t result = drv->read(blk, (seek / blk->sector_size) + part_seek, dst, n / blk->sector_size);
     if (result < 0)
         return result;
     

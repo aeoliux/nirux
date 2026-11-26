@@ -27,7 +27,7 @@ int block_floppy_probe() {
                     .type = ((block_floppy_drives_count & 0xff) << 16 | drive_type | BLOCK_FLOPPY) & 0xffffff,
                     .removable = 1,
                     .sector_size = 512,
-                    .last_lba = 0,
+                    .total_lba = 0,
                     .driver = &block_floppy_driver,
                     .reserved = driver,
                 };

@@ -59,6 +59,12 @@ int fs_fat_initialise(uint16_t device) {
             return fs_fat_kfree_if_empty(-ENOSUP);
         }
 
+        size_t buffer_length = ((2 + block->sectors_per_cluster) * block->sector_size);
+        block->buffer = kalloc((buffer_length / meminfo.pagesize) + ((buffer_length % meminfo.pagesize) > 0));
+        if (!block->buffer) {
+            return fs_fat_kfree_if_empty(-ENOMEM);
+        }
+
         block->device = device;
     } else {
         // FAT32 currently unsupported

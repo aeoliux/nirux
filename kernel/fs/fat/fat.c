@@ -115,27 +115,32 @@ static inline uint32_t last_cluster_sign_adjust(struct fs_fat_superblock *blk) {
 int64_t fs_fat_seek_clusters(
     struct fs_fat_superblock *blk,
     size_t cluster,
-    size_t seek_to_byte
+    size_t seek_to_byte,
+    size_t *seeked_sector
 ) {
     int64_t clus = cluster;
-    size_t seeked = 0;
+    *seeked_sector = 0;
     uint32_t last_cluster_sign = last_cluster_sign_adjust(blk);
-    while (seek_to_byte / blk->sector_size > seeked) {
-        clus = fs_fat_cluster(blk, clus);
+    while (seek_to_byte / blk->sector_size > *seeked_sector) {
+        if (*seeked_sector && !(*seeked_sector % blk->sectors_per_cluster)) {
+            clus = fs_fat_cluster(blk, clus);
 
-        if (clus < 0)
-            return clus;
+            if (clus < 0)
+                return clus;
 
-        if (clus >= last_cluster_sign)
-            return 0;
+            if (clus >= last_cluster_sign)
+                return 0;
 
-        if (clus == 0) {
-            printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", blk->device);
-            return -EIO;
+            if (clus == 0) {
+                printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", blk->device);
+                return -EIO;
+            }
         }
 
-        seeked += blk->sectors_per_cluster;
+        (*seeked_sector)++;
     }
+
+    (*seeked_sector) %= blk->sectors_per_cluster;
 
     return clus;
 }
@@ -168,7 +173,8 @@ ssize_t fs_fat_read(
 
     uint32_t last_cluster_sign = last_cluster_sign_adjust(blk);
 
-    int64_t seeked_clus = fs_fat_seek_clusters(blk, cluster, seek);
+    size_t sector_seeked = 0;
+    int64_t seeked_clus = fs_fat_seek_clusters(blk, cluster, seek, &sector_seeked);
     if (seeked_clus <= 0) return seeked_clus;
     cluster = seeked_clus;
 
@@ -177,8 +183,8 @@ ssize_t fs_fat_read(
     size_t done = 0;
     int64_t next = 0;
     while ((cluster < last_cluster_sign || seek) && n > 0) {
-        size_t sector_index = 0;
-        
+        size_t sector_index = sector_seeked;
+
         while (sector_index < blk->sectors_per_cluster && n > 0) {
             if (cluster < last_cluster_sign) next = fs_fat_read_cluster(blk, cluster, sector_index);
             
@@ -204,7 +210,7 @@ ssize_t fs_fat_read(
             seek = 0;
             sector_index++;
         }
-
+        sector_seeked = 0;
         cluster = next;
     }
 

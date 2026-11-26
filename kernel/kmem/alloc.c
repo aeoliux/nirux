@@ -1,4 +1,5 @@
 #include <kmem.h>
+#include <stdio.h>
 #include <string.h>
 
 uword_t find_first_free_pages(uword_t at, uword_t n) {
