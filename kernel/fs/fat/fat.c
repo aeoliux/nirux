@@ -71,12 +71,8 @@ int64_t fs_fat_cluster(
 
 int64_t fs_fat_read_cluster(
     struct fs_fat_superblock *blk,
-    size_t cluster,
-    size_t sector_index
+    size_t cluster
 ) {
-    if (sector_index >= blk->sectors_per_cluster)
-        return -EINVAL;
-
     int64_t next_i64 = fs_fat_cluster(blk, cluster);
     if (next_i64 <= 0) return next_i64;
     uint32_t next = next_i64;
@@ -91,14 +87,14 @@ int64_t fs_fat_read_cluster(
 
     size_t cluster_sector =
         blk->reserved_sectors + (blk->sectors_per_fat * blk->fats_count) + (blk->root_dir_entries * 32 / blk->sector_size) + ((cluster - 2) * blk->sectors_per_cluster);
-    size_t cluster_offset = (cluster_sector + sector_index) * blk->sector_size;
+    size_t cluster_offset = cluster_sector * blk->sector_size;
 
-    if (!blk->current_data_buffered_sector || blk->current_data_buffered_sector != (cluster_sector + sector_index)) {
-        ssize_t result = dread(blk->device, &cluster_offset, &blk->buffer[1024], blk->sector_size);
+    if (!blk->current_data_buffered_sector || blk->current_data_buffered_sector != cluster_sector) {
+        ssize_t result = dread(blk->device, &cluster_offset, &blk->buffer[1024], blk->sector_size * blk->sectors_per_cluster);
         if (result < 0)
             return result;
 
-        blk->current_data_buffered_sector = cluster_sector + sector_index;
+        blk->current_data_buffered_sector = cluster_sector;
     }
 
     return next;
@@ -115,32 +111,25 @@ static inline uint32_t last_cluster_sign_adjust(struct fs_fat_superblock *blk) {
 int64_t fs_fat_seek_clusters(
     struct fs_fat_superblock *blk,
     size_t cluster,
-    size_t seek_to_byte,
-    size_t *seeked_sector
+    size_t seek_to_byte
 ) {
     int64_t clus = cluster;
-    *seeked_sector = 0;
+    size_t seeked = 0;
     uint32_t last_cluster_sign = last_cluster_sign_adjust(blk);
-    while (seek_to_byte / blk->sector_size > *seeked_sector) {
-        if (*seeked_sector && !(*seeked_sector % blk->sectors_per_cluster)) {
-            clus = fs_fat_cluster(blk, clus);
+    while (seek_to_byte / (blk->sector_size * blk->sectors_per_cluster) > seeked) {
+        clus = fs_fat_cluster(blk, clus);
 
-            if (clus < 0)
-                return clus;
+        if (clus < 0)
+            return clus;
 
-            if (clus >= last_cluster_sign)
-                return 0;
+        if (clus >= last_cluster_sign)
+            return 0;
 
-            if (clus == 0) {
-                printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", blk->device);
-                return -EIO;
-            }
+        if (clus == 0) {
+            printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", blk->device);
+            return -EIO;
         }
-
-        (*seeked_sector)++;
     }
-
-    (*seeked_sector) %= blk->sectors_per_cluster;
 
     return clus;
 }
@@ -173,44 +162,37 @@ ssize_t fs_fat_read(
 
     uint32_t last_cluster_sign = last_cluster_sign_adjust(blk);
 
-    size_t sector_seeked = 0;
-    int64_t seeked_clus = fs_fat_seek_clusters(blk, cluster, seek, &sector_seeked);
+    int64_t seeked_clus = fs_fat_seek_clusters(blk, cluster, seek);
     if (seeked_clus <= 0) return seeked_clus;
     cluster = seeked_clus;
 
-    seek %= blk->sector_size;
+    seek %= (blk->sector_size * blk->sectors_per_cluster);
 
     size_t done = 0;
     int64_t next = 0;
     while ((cluster < last_cluster_sign || seek) && n > 0) {
-        size_t sector_index = sector_seeked;
-
-        while (sector_index < blk->sectors_per_cluster && n > 0) {
-            if (cluster < last_cluster_sign) next = fs_fat_read_cluster(blk, cluster, sector_index);
+        if (cluster < last_cluster_sign) next = fs_fat_read_cluster(blk, cluster);
             
-            if (next < 0)
-                return cluster;
+        if (next < 0)
+            return cluster;
 
-            if (next == 0) {
-                printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", device);
-                return -EIO;
-            }
-
-            if (n / blk->sector_size) {
-                memcpy(buf + done, &blk->buffer[1024 + seek], blk->sector_size - seek);
-                done += blk->sector_size - seek;
-                n -= blk->sector_size - seek;
-            } else {
-                size_t off = n % blk->sector_size;
-                memcpy(buf + done, &blk->buffer[1024 + seek], off);
-                done += off;
-                n = 0;
-            }
-
-            seek = 0;
-            sector_index++;
+        if (next == 0) {
+            printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", device);
+            return -EIO;
         }
-        sector_seeked = 0;
+
+        if (n / (blk->sector_size * blk->sectors_per_cluster)) {
+            memcpy(buf + done, &blk->buffer[1024 + seek], (blk->sector_size * blk->sectors_per_cluster) - seek);
+            done += blk->sector_size - seek;
+            n -= blk->sector_size - seek;
+        } else {
+            size_t off = n % (blk->sector_size * blk->sectors_per_cluster);
+            memcpy(buf + done, &blk->buffer[1024 + seek], off);
+            done += off;
+            n = 0;
+        }
+
+        seek = 0;
         cluster = next;
     }
 

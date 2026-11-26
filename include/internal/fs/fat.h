@@ -110,14 +110,12 @@ int64_t fs_fat_cluster(
 int64_t fs_fat_seek_clusters(
     struct fs_fat_superblock *blk,
     size_t cluster,
-    size_t seek_to_byte,
-    size_t *seeked_sector
+    size_t seek_to_byte
 );
 
 int64_t fs_fat_read_cluster(
     struct fs_fat_superblock *blk,
-    size_t cluster,
-    size_t sector_index
+    size_t cluster
 );
 
 ssize_t fs_fat_read(

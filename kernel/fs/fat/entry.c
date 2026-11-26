@@ -35,8 +35,7 @@ static inline ssize_t read_sector_for_entry(struct fs_fat_superblock *blk, size_
         offset = (32 * entry) % blk->sector_size;
     } else {
         size_t absolute_offset = 32 * entry;
-        size_t secoff = 0;
-        int64_t cluster = fs_fat_seek_clusters(blk, dir_start, absolute_offset, &secoff);
+        int64_t cluster = fs_fat_seek_clusters(blk, dir_start, absolute_offset);
         if (cluster < 0)
             return cluster;
 
