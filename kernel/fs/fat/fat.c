@@ -129,6 +129,8 @@ int64_t fs_fat_seek_clusters(
             printf("// fat detected corrupted filesystem on %x: file refers to empty cluster\n", blk->device);
             return -EIO;
         }
+
+        seeked++;
     }
 
     return clus;

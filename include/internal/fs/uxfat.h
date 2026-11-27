@@ -15,15 +15,11 @@ struct fs_uxfat_superblock {
     uint32_t    sectors_per_fat;
     
     uint16_t    legacy_spf;         // must be 0
-    uint16_t    sectors_per_track;
-    uint16_t    heads_count;
     
     uint64_t    sectors_count;
+    uint64_t    seek:56;
     // EXTENDED
 
-    uint8_t     disk_no; // DO NOT RELY ON THIS
-    uint8_t     nt_flags;
-    uint8_t     signature;
     uint8_t     volume_serial[4];
     uint8_t     volume_label[11];
     uint8_t     system_id[8];
@@ -41,7 +37,7 @@ enum UXFAT_DIR_ATTR {
     UXFAT_HRDLINK   = 0x40,
     UXFAT_SYMLINK   = 0x80,
 
-    UXFAT_STREAM    = 0xf0,
+    UXFAT_STREAM    = 0xf1,
     UXFAT_LFN       = 0x0f,
     UXFAT_LFNSYM    = 0x8f,
 };
@@ -71,5 +67,5 @@ struct fs_uxfat_stream {
     uint64_t        offset;
     uint64_t        cluster;
     uint64_t        length;
-    uint64_t        length_in_cluster:56;
+    uint64_t        length_in_clusters:56;
 } __attribute__((__packed__));

@@ -88,15 +88,10 @@ int main(int argc, char **argv) {
         .fat_addressing = addr & 0xf0,
         .sectors_per_fat = spf,
         .legacy_spf = 0,
-        
-        // legacy chs data
-        .sectors_per_track = 0,
-        .heads_count = 0,
 
         .sectors_count = total_sectors,
-        .disk_no = (volsiz > 2880 * 1024) ? 0x80 : 0x00,
-        .nt_flags = 0,
-        .signature = 0x2A,
+        .seek = 3,
+
         .volume_serial = "0000",
         .volume_label = "uxfatvol",
         .system_id = "UXFAT   "
