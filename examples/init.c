@@ -6,11 +6,11 @@ char *i32toa(char *dst, unsigned int n, unsigned char base, unsigned char unsig)
 
 int main(int argc, char **argv) {
     char buf[16];
-    // puts("init: mounting /dev/fdblk0 (0x900) as /\n");
-    // if ((int) syscall(0xfffb, 0x900, "fat") < 0) {
-    //     puts("init: failed to mount /\n");
-    //     return 1;
-    // }
+    puts("init: mounting /dev/fdblk0 (0x900) as /\n");
+    if ((int) syscall(0xfffb, 0x900, "fat") < 0) {
+        puts("init: failed to mount /\n");
+        return 1;
+    }
 
     int pid = syscall(2);
     if (!pid) {
@@ -37,7 +37,13 @@ int main(int argc, char **argv) {
 
     puts("init: /dev/fdblk0 = / (success)\n");
 
-    while (1) {}
+    char inp[128];
+    while (1) {
+        if (syscall(3, 0, inp, 128) < 0)
+            puts("init: read error\n");
+        else
+            puts(inp);
+    }
 
     return 0;
 }

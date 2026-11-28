@@ -1,3 +1,4 @@
+#include <task.h>
 #include <i8259.h>
 #include <kmem.h>
 #include <multiboot.h>
@@ -15,7 +16,6 @@ void _i386_init(uint32_t _, multiboot_info_t *minfo) {
     idt_load();
 
     initialise_basic_isrs();
-
     i8259_initialise();
 
     pit_set_frequency(100);
@@ -34,6 +34,8 @@ void _i386_init(uint32_t _, multiboot_info_t *minfo) {
             ssb_payload_size = 0;
         }
     }
+
+    __asm__ volatile ("sti");
 
     kmain();
 }

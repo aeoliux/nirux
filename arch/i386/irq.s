@@ -15,9 +15,7 @@ idt_ptr:
 .section .text
 .global idt_load
 idt_load:
-    cli
     lidt (idt_ptr)
-    sti
 
     ret
 
@@ -128,4 +126,3 @@ idisable:
 ienable:
     sti
     ret
-    

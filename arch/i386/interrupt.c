@@ -8,15 +8,11 @@
 #include <signal.h>
 
 void idt_set_gate(uint8_t n, uint32_t addr, uint8_t flags) {
-    __asm__ volatile ("cli");
-
     idt[n].offset_low = addr & 0xffff;
     idt[n].offset_high = (addr >> 16) & 0xffff;
     idt[n].selector = 0x8;
     idt[n].zero = 0;
     idt[n].type_attr = flags;
-
-    __asm__ volatile ("sti");
 }
 
 struct regs *i386_interrupt_handler(struct regs *r) {

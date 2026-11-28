@@ -1,5 +1,5 @@
-#include "panic.h"
-#include "stdint.h"
+#include <panic.h>
+#include <stdint.h>
 #include <fs.h>
 #include <string.h>
 #include <unistd.h>
@@ -20,41 +20,42 @@
 #include <task.h>
 #include <ssb.h>
 #include <ata.h>
+#include <input.h>
 
 // static inline void msleep(size_t ms) {
 //     size_t target = timer_elapsed + ms;
 //     while (timer_elapsed < target) suspend();
 // }
 
-static void list_dir_recursively(const char *path, size_t margin) {
-    struct fs_direntry entry;
-    size_t seek = 0;
-    ssize_t result;
-    char buf[MAXPATHSIZ + 1];
-
-    while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
-        for (size_t i = 0; i < margin; i++)
-            putchar('-');
-        printf("/%s - %u:%u, %o, %u KB\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode, (uint32_t) entry.size / 1024);
-
-        if (entry.type & FS_DIR) {
-            memset(buf, 0, sizeof buf);
-            strcpy(buf, path);
-
-            strcat(buf, entry.filename);
-
-            list_dir_recursively(buf, strlen(buf));
-        }
-    }
-
-    if (!margin) printf("Done with result = %d\n", result);
-}
+// static void list_dir_recursively(const char *path, size_t margin) {
+//     struct fs_direntry entry;
+//     size_t seek = 0;
+//     ssize_t result;
+//     char buf[MAXPATHSIZ + 1];
+//
+//     while ((result = fs_read_dir(path, &seek, &entry)) > 0) {
+//         for (size_t i = 0; i < margin; i++)
+//             putchar('-');
+//         printf("/%s - %u:%u, %o, %u KB\n", entry.filename, (uint32_t) entry.uid, (uint32_t) entry.gid, (uint32_t) entry.mode, (uint32_t) entry.size / 1024);
+//
+//         if (entry.type & FS_DIR) {
+//             memset(buf, 0, sizeof buf);
+//             strcpy(buf, path);
+//
+//             strcat(buf, entry.filename);
+//
+//             list_dir_recursively(buf, strlen(buf));
+//         }
+//     }
+//
+//     if (!margin) printf("Done with result = %d\n", result);
+// }
 
 // static uint8_t task_finished = 0;
 // static void simple_task() {
 //     // printf("Listing / recursively:\n");
 //     // list_dir_recursively("/", 0);
-    
+
 
 //     task_finished = 1;
 //     exit(0);
@@ -80,6 +81,7 @@ void kmain() {
     video_interface.init(NULL);
     terminal_interface.init(NULL);
     block_interface.init(NULL);
+    input_interface.init(NULL);
 
     // initialise vga console driver
     vga_console_init();
@@ -90,7 +92,8 @@ void kmain() {
 
     int floppy_ready = !block_floppy_driver.probe();
 
-    block_isaata.probe();
+    // block_isaata.probe();
+    input_ps2pc.initialise();
 
     printf("// Nirux %s %s\n", UNAME_M, UNAME_R);
     printf("// %d KB total memory\n", (meminfo.total - meminfo.reserved) / 1024);
@@ -106,31 +109,29 @@ void kmain() {
 
     printf("// Kernel initialised, %u.%u ms elapsed\n", (uint32_t) timer_elapsed, (uint32_t) timer_elapsed_f);
 
-    int result = 0;
-    if ((result = fs_mount(0, "/dev", &fs_devfs)) < 0)
-        panic("couldn't mount /dev: %d", ret, result);
-    printf("// Mounted devfs on /dev\n");
-
-    const char *argv[] = {"init", NULL};
-    if (ssb_payload_size && ssb_payload) {
-        printf("// Executing ssb payload as init script\n");
-        if ((result = exec_ssb(SSB_SRC_MEM, (uword_t) ssb_payload, argv, NULL, NULL)) < 0)
-            panic("payload execution failed, exec_ssb = %d", ret, result);
-    } else if (floppy_ready) {
-        printf("// Attempting to mount /dev/isaata128p1 (FAT) as /\n");
-        if ((result = fs_mount_root(0x985, &fs_fat)))
-            panic("couldn't mount /dev/isaata128p1, fs_mount = %d", ret, result);
-
-        list_dir_recursively("/", 0);
-
-        int fd;
-        printf("// /init\n");
-        if ((fd = open("/init", O_EXEC)) < 0)
-            panic("couldn't execute /init, open = %d", ret, fd);
-
-        if ((result = exec_ssb(SSB_SRC_FILE, (uword_t) fd, argv, NULL, NULL)) < 0)
-            panic("/init execution failed, exec_ssb = %d", ret, result);
-    } else panic("no /", ret);
+//     int result = 0;
+//     if ((result = fs_mount(0, "/dev", &fs_devfs)) < 0)
+//         panic("couldn't mount /dev: %d", ret, result);
+//     printf("// Mounted devfs on /dev\n");
+//
+//     const char *argv[] = {"init", NULL};
+//     if (ssb_payload_size && ssb_payload) {
+//         printf("// Executing ssb payload as init script\n");
+//         if ((result = exec_ssb(SSB_SRC_MEM, (uword_t) ssb_payload, argv, NULL, NULL)) < 0)
+//             panic("payload execution failed, exec_ssb = %d", ret, result);
+//     } else if (floppy_ready) {
+//         printf("// Attempting to mount /dev/fdblk0 (FAT) as /\n");
+//         if ((result = fs_mount_root(0x900, &fs_fat)))
+//             panic("couldn't mount /dev/fdblk0, fs_mount = %d", ret, result);
+//
+//         int fd;
+//         printf("// /init\n");
+//         if ((fd = open("/init", O_EXEC)) < 0)
+//             panic("couldn't execute /init, open = %d", ret, fd);
+//
+//         if ((result = exec_ssb(SSB_SRC_FILE, (uword_t) fd, argv, NULL, NULL)) < 0)
+//             panic("/init execution failed, exec_ssb = %d", ret, result);
+//     } else panic("no /", ret);
 
     while (1) suspend();
 }
